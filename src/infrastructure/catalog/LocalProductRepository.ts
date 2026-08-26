@@ -28,7 +28,7 @@ export class LocalProductRepository implements ProductRepository {
     const nativeDatabase = await this.database.getNativeDatabase();
     if (!nativeDatabase) {
       return [...this.database.getMemoryDatabase().products.values()]
-        .filter((product) => product.houseId === houseId)
+        .filter((product) => product.houseId === houseId && !product.deletedAt)
         .map(clone)
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     }
@@ -40,7 +40,10 @@ export class LocalProductRepository implements ProductRepository {
         .getAll(IDBKeyRange.only(houseId)) as IDBRequest<Product[]>,
     );
     await transactionToPromise(transaction);
-    return products.map(clone).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    return products
+      .filter((product) => !product.deletedAt)
+      .map(clone)
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async get(houseId: string, id: string) {
@@ -48,14 +51,14 @@ export class LocalProductRepository implements ProductRepository {
     const nativeDatabase = await this.database.getNativeDatabase();
     if (!nativeDatabase) {
       const product = this.database.getMemoryDatabase().products.get(id);
-      return product?.houseId === houseId ? clone(product) : undefined;
+      return product?.houseId === houseId && !product.deletedAt ? clone(product) : undefined;
     }
     const transaction = nativeDatabase.transaction(CASAE_STORES.products, 'readonly');
     const product = await requestToPromise(
       transaction.objectStore(CASAE_STORES.products).get(id) as IDBRequest<Product | undefined>,
     );
     await transactionToPromise(transaction);
-    return product?.houseId === houseId ? clone(product) : undefined;
+    return product?.houseId === houseId && !product.deletedAt ? clone(product) : undefined;
   }
 
   async save(product: Product) {

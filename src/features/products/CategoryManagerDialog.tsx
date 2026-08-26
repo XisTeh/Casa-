@@ -82,7 +82,7 @@ export function CategoryManagerDialog({
         </header>
         <form className="category-create" onSubmit={create}>
           <label htmlFor="new-category">Nova categoria</label>
-          <div>
+          <div className="category-inline-form">
             <input
               id="new-category"
               ref={inputRef}
@@ -100,6 +100,7 @@ export function CategoryManagerDialog({
             <div className="category-row" key={category.id}>
               {editingId === category.id ? (
                 <form
+                  className="category-inline-form"
                   onSubmit={(event) => {
                     event.preventDefault();
                     void run(async () => {

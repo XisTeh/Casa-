@@ -22,7 +22,7 @@ describe('orçamento mensal local', () => {
     expect(edited.createdAt).toBe(first.createdAt);
     expect(await service.list()).toHaveLength(2);
     expect(await repository.getByMonth(HOUSE_ID, 2026, 8)).toMatchObject({ amountCents: 180_000 });
-    expect(CASAE_DATABASE_VERSION).toBe(7);
+    expect(CASAE_DATABASE_VERSION).toBe(8);
   });
 
   it('rejeita orçamento zero, negativo e mês inválido', async () => {

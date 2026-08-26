@@ -5,12 +5,14 @@ import type {
   ProductUpdate,
   ProductWithLastPurchase,
 } from '../../domain/catalog';
+import type { ShoppingSyncStatus } from '../../domain/shopping-list';
 
 export type ProductContextValue = {
   products: ProductWithLastPurchase[];
   categories: Category[];
   isLoading: boolean;
   error: string | null;
+  syncStatus: ShoppingSyncStatus;
   createProduct: (input: NewProduct) => Promise<void>;
   updateProduct: (id: string, input: ProductUpdate) => Promise<void>;
   setFavorite: (id: string, favorite: boolean) => Promise<void>;

@@ -10,6 +10,9 @@ import type {
 } from '../../domain/catalog';
 import { productContext } from './ProductContext';
 import { useHousehold } from '../house/HouseContext';
+import type { LegacyCatalogMigration } from '../../domain/catalog-sync';
+import type { ShoppingSyncStatus } from '../../domain/shopping-list';
+import { LegacyCatalogMigrationDialog } from './LegacyCatalogMigrationDialog';
 
 type ProductProviderProps = {
   children: ReactNode;
@@ -35,6 +38,12 @@ export function ProductProvider({
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<ShoppingSyncStatus>({ state: 'local', pending: 0 });
+  const [legacyPrompt, setLegacyPrompt] = useState<{
+    houseId: string;
+    migration: LegacyCatalogMigration;
+  } | null>(null);
+  const [migrationDismissedForHouse, setMigrationDismissedForHouse] = useState<string | null>(null);
 
   const refreshProducts = useCallback(async () => {
     const [savedProducts, savedCategories] = await Promise.all([
@@ -45,6 +54,26 @@ export function ProductProvider({
     setCategories(savedCategories);
     setError(null);
   }, [activeHouse.id, categoryService, productService]);
+
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = productService.subscribe(
+      activeHouse.id,
+      () => void refreshProducts(),
+      (status) => active && setSyncStatus(status),
+    );
+    void productService
+      .syncNow(activeHouse.id)
+      .then(() => productService.getLegacyMigration(activeHouse.id))
+      .then(
+        (migration) =>
+          active && setLegacyPrompt(migration ? { houseId: activeHouse.id, migration } : null),
+      );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [activeHouse.id, productService, refreshProducts]);
 
   useEffect(() => {
     let current = true;
@@ -136,6 +165,7 @@ export function ProductProvider({
       categories,
       isLoading,
       error,
+      syncStatus,
       createProduct,
       updateProduct,
       setFavorite,
@@ -152,6 +182,7 @@ export function ProductProvider({
       createCategory,
       createProduct,
       error,
+      syncStatus,
       isLoading,
       products,
       refreshProducts,
@@ -163,5 +194,22 @@ export function ProductProvider({
     ],
   );
 
-  return <productContext.Provider value={value}>{children}</productContext.Provider>;
+  return (
+    <productContext.Provider value={value}>
+      {children}
+      {legacyPrompt?.houseId === activeHouse.id &&
+        migrationDismissedForHouse !== activeHouse.id && (
+          <LegacyCatalogMigrationDialog
+            migration={legacyPrompt.migration}
+            houseName={activeHouse.name}
+            onClose={() => setMigrationDismissedForHouse(activeHouse.id)}
+            onImport={async () => {
+              await legacyPrompt.migration.importIntoHouse();
+              setLegacyPrompt(null);
+              await refreshProducts();
+            }}
+          />
+        )}
+    </productContext.Provider>
+  );
 }

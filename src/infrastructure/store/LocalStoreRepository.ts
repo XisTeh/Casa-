@@ -35,7 +35,7 @@ export class LocalStoreRepository implements StoreRepository {
     if (!nativeDatabase) {
       return sortStores(
         [...this.database.getMemoryDatabase().stores.values()]
-          .filter((store) => store.houseId === houseId)
+          .filter((store) => store.houseId === houseId && !store.deletedAt)
           .map(cloneStore),
       );
     }
@@ -47,7 +47,7 @@ export class LocalStoreRepository implements StoreRepository {
         .getAll(IDBKeyRange.only(houseId)) as IDBRequest<Store[]>,
     );
     await transactionToPromise(transaction);
-    return sortStores(stores.map(cloneStore));
+    return sortStores(stores.filter((store) => !store.deletedAt).map(cloneStore));
   }
 
   async create(store: Store): Promise<Store> {

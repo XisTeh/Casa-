@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import foundation from '../../supabase/migrations/202608240001_foundation.sql?raw';
 import onlineIdentity from '../../supabase/migrations/202608260001_online_identity.sql?raw';
 import shoppingSync from '../../supabase/migrations/202608260002_shopping_list_sync.sql?raw';
+import catalogSync from '../../supabase/migrations/202608260003_catalog_stores_sync.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -47,5 +48,43 @@ describe('migrations da fundação Supabase', () => {
     expect(createHouseFunction).toContain('insert into public.houses');
     expect(createHouseFunction).toContain('insert into public.house_members');
     expect(createHouseFunction).toContain("'owner', 'active'");
+  });
+
+  it('sincroniza catálogo e mercados com defaults idempotentes, tombstones, RLS e Realtime', () => {
+    for (const table of ['categories', 'products', 'stores']) {
+      expect(catalogSync).toContain(`create table public.${table}`);
+      expect(catalogSync).toContain(`alter table public.${table} enable row level security`);
+      expect(catalogSync).toContain(
+        `alter publication supabase_realtime add table public.${table}`,
+      );
+    }
+    for (const key of [
+      'mercearia',
+      'hortifruti',
+      'laticinios',
+      'limpeza',
+      'higiene',
+      'bebidas',
+      'padaria',
+      'acougue',
+      'congelados',
+      'pet',
+      'outros',
+    ]) {
+      expect(catalogSync).toContain(`('${key}',`);
+    }
+    expect(catalogSync).toContain(
+      'select private.ensure_default_categories(id, created_by) from public.houses',
+    );
+    expect(catalogSync).toContain(
+      'perform private.ensure_default_categories(new_house_id, auth.uid())',
+    );
+    expect(catalogSync).toContain('excluded.updated_at > public.products.updated_at');
+    expect(catalogSync).toContain('deleted_at timestamptz');
+    expect(catalogSync).toContain('products_category_same_house_fk');
+    expect(catalogSync).toContain('pg_advisory_xact_lock');
+    expect(catalogSync).toContain(
+      'revoke all on function private.ensure_default_categories(uuid, uuid)',
+    );
   });
 });

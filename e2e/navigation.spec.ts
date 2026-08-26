@@ -219,6 +219,76 @@ test('preserva o layout nos breakpoints críticos sem overflow horizontal', asyn
   }
 });
 
+test('preserva integralmente a ação de criar categoria nos breakpoints críticos', async ({
+  page,
+}) => {
+  const viewports = [320, 360, 375, 390, 412, 430, 768, 1280];
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: width < 700 ? 800 : 900 });
+    await page.goto('/produtos');
+    await page.getByRole('button', { name: 'Categorias' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Gerenciar categorias' });
+    await expect(dialog).toBeVisible();
+
+    const layout = await dialog.evaluate((element) => {
+      const controls = element.querySelector<HTMLElement>(
+        '.category-create > .category-inline-form',
+      )!;
+      const input = controls.querySelector<HTMLInputElement>('#new-category')!;
+      const button = controls.querySelector<HTMLButtonElement>('.button')!;
+      const label = button.querySelector<HTMLElement>('.button__label')!;
+      const list = element.querySelector<HTMLElement>('.category-list')!;
+      const controlsBounds = controls.getBoundingClientRect();
+      const inputBounds = input.getBoundingClientRect();
+      const buttonBounds = button.getBoundingClientRect();
+      return {
+        documentFits: document.documentElement.scrollWidth <= window.innerWidth,
+        dialogFits: element.scrollWidth <= element.clientWidth,
+        listFits: list.scrollWidth <= list.clientWidth,
+        buttonLabelFits: label.scrollWidth <= label.clientWidth + 1,
+        buttonInside:
+          buttonBounds.left >= controlsBounds.left - 1 &&
+          buttonBounds.right <= controlsBounds.right + 1,
+        inputMinWidth: getComputedStyle(input).minWidth,
+        buttonWhiteSpace: getComputedStyle(button).whiteSpace,
+        buttonHeight: buttonBounds.height,
+        inputHeight: inputBounds.height,
+        columns: getComputedStyle(controls).gridTemplateColumns.split(' ').length,
+        stacked: buttonBounds.top >= inputBounds.bottom,
+        buttonFills: Math.abs(buttonBounds.width - controlsBounds.width) <= 1,
+      };
+    });
+
+    expect(layout).toMatchObject({
+      documentFits: true,
+      dialogFits: true,
+      listFits: true,
+      buttonLabelFits: true,
+      buttonInside: true,
+      inputMinWidth: '0px',
+      buttonWhiteSpace: 'nowrap',
+    });
+    expect(layout.buttonHeight).toBeGreaterThanOrEqual(44);
+    expect(Math.abs(layout.buttonHeight - layout.inputHeight)).toBeLessThanOrEqual(1);
+    if (width === 320) {
+      expect(layout).toMatchObject({ columns: 1, stacked: true, buttonFills: true });
+    } else {
+      expect(layout).toMatchObject({ columns: 2, stacked: false });
+    }
+
+    await page.getByRole('button', { name: 'Fechar categorias' }).click();
+  }
+
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto('/produtos');
+  await page.getByRole('button', { name: 'Categorias' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Gerenciar categorias' });
+  await dialog.getByLabel('Nova categoria').fill('Categoria layout E2E');
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog.getByText('Categoria layout E2E', { exact: true })).toBeVisible();
+});
+
 test('mantém botões, campos e formulário longo corretos em 320px', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes('mobile'), 'Regressão visual específica de mobile.');
   await page.setViewportSize({ width: 320, height: 720 });

@@ -75,7 +75,7 @@ export class LocalCategoryRepository implements CategoryRepository {
     const nativeDatabase = await this.database.getNativeDatabase();
     if (!nativeDatabase) {
       return [...this.database.getMemoryDatabase().categories.values()]
-        .filter((category) => category.houseId === houseId)
+        .filter((category) => category.houseId === houseId && !category.deletedAt)
         .map(clone)
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     }
@@ -87,7 +87,10 @@ export class LocalCategoryRepository implements CategoryRepository {
         .getAll(IDBKeyRange.only(houseId)) as IDBRequest<Category[]>,
     );
     await transactionToPromise(transaction);
-    return categories.map(clone).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    return categories
+      .filter((category) => !category.deletedAt)
+      .map(clone)
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async get(houseId: string, id: string) {
@@ -95,14 +98,14 @@ export class LocalCategoryRepository implements CategoryRepository {
     const nativeDatabase = await this.database.getNativeDatabase();
     if (!nativeDatabase) {
       const category = this.database.getMemoryDatabase().categories.get(id);
-      return category?.houseId === houseId ? clone(category) : undefined;
+      return category?.houseId === houseId && !category.deletedAt ? clone(category) : undefined;
     }
     const transaction = nativeDatabase.transaction(CASAE_STORES.categories, 'readonly');
     const category = await requestToPromise(
       transaction.objectStore(CASAE_STORES.categories).get(id) as IDBRequest<Category | undefined>,
     );
     await transactionToPromise(transaction);
-    return category?.houseId === houseId ? clone(category) : undefined;
+    return category?.houseId === houseId && !category.deletedAt ? clone(category) : undefined;
   }
 
   async save(category: Category) {

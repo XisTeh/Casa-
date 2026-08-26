@@ -6,6 +6,7 @@ import {
   type Product,
 } from '../../domain/catalog';
 import type { AvatarCrop } from '../../domain/profile-avatar';
+import type { CatalogSyncOutboxEntry } from '../../domain/catalog-sync';
 import {
   HOUSE_ID,
   initialShoppingListSeed,
@@ -24,7 +25,7 @@ import {
 } from '../../domain/house';
 
 export const CASAE_DATABASE_NAME = 'casae-local';
-export const CASAE_DATABASE_VERSION = 7;
+export const CASAE_DATABASE_VERSION = 8;
 
 export const ACTIVE_HOUSE_METADATA_KEY = 'activeHouseId';
 export const ACTIVE_MEMBER_METADATA_KEY = 'activeMemberId';
@@ -82,7 +83,7 @@ export type CasaeMemoryDatabase = {
   houseMembers: Map<string, HouseMember>;
   profileAvatars: Map<string, LocalProfileAvatar>;
   metadata: Map<string, LocalMetadata>;
-  syncOutbox: Map<string, ShoppingSyncOutboxEntry>;
+  syncOutbox: Map<string, ShoppingSyncOutboxEntry | CatalogSyncOutboxEntry>;
 };
 
 export type LegacyDatabaseSnapshot = {
@@ -229,10 +230,17 @@ function openCasaeDatabase(name: string): Promise<IDBDatabase> {
         database.createObjectStore(CASAE_STORES.metadata, { keyPath: 'key' });
       }
 
-      if (!database.objectStoreNames.contains(CASAE_STORES.syncOutbox)) {
-        const store = database.createObjectStore(CASAE_STORES.syncOutbox, { keyPath: 'id' });
-        store.createIndex('houseId', 'houseId', { unique: false });
-        store.createIndex('houseAndEntity', ['houseId', 'entityId'], { unique: true });
+      const syncStore = database.objectStoreNames.contains(CASAE_STORES.syncOutbox)
+        ? request.transaction!.objectStore(CASAE_STORES.syncOutbox)
+        : database.createObjectStore(CASAE_STORES.syncOutbox, { keyPath: 'id' });
+      if (!syncStore.indexNames.contains('houseId')) {
+        syncStore.createIndex('houseId', 'houseId', { unique: false });
+      }
+      if (syncStore.indexNames.contains('houseAndEntity')) syncStore.deleteIndex('houseAndEntity');
+      if (!syncStore.indexNames.contains('houseEntityTypeAndId')) {
+        syncStore.createIndex('houseEntityTypeAndId', ['houseId', 'entityType', 'entityId'], {
+          unique: true,
+        });
       }
 
       if (housesStore && membersStore) {

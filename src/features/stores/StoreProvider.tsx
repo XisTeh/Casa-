@@ -43,6 +43,11 @@ export function StoreProvider({ children, service = defaultStoreService }: Store
     };
   }, [activeHouse.id, service]);
 
+  useEffect(
+    () => service.subscribe(activeHouse.id, () => void refreshStores()),
+    [activeHouse.id, refreshStores, service],
+  );
+
   const createStore = useCallback(
     async (input: NewStore) => {
       const store = await service.create(input, activeHouse.id);

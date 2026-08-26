@@ -20,6 +20,8 @@ import { SupabaseHouseRepository } from '../infrastructure/supabase/SupabaseHous
 import { LocalProfileAvatarRepository } from '../infrastructure/profile/LocalProfileAvatarRepository';
 import { OfflineFirstShoppingRepository } from '../infrastructure/shopping/OfflineFirstShoppingRepository';
 import { SupabaseShoppingRepository } from '../infrastructure/supabase/SupabaseShoppingRepository';
+import { SupabaseCatalogRepository } from '../infrastructure/supabase/SupabaseCatalogRepository';
+import { OfflineFirstCatalogSync } from '../infrastructure/catalog/OfflineFirstCatalogRepository';
 
 export const defaultLocalDatabase = new CasaeLocalDatabase();
 export const defaultHouseRepository = new LocalHouseRepository(defaultLocalDatabase);
@@ -68,3 +70,28 @@ export const createDefaultOnlineShoppingListService = (userId: string) =>
       userId,
     ),
   );
+
+export const createDefaultOnlineCatalogServices = (
+  shoppingListService: ShoppingListService,
+  userId: string,
+) => {
+  const sync = new OfflineFirstCatalogSync(
+    defaultLocalDatabase,
+    new SupabaseCatalogRepository(),
+    undefined,
+    userId,
+  );
+  const categoryService = new CategoryService(sync.categories, sync.products);
+  const productService = new ProductService(
+    sync.products,
+    sync.categories,
+    defaultPurchaseRepository,
+    shoppingListService,
+  );
+  return {
+    categoryService,
+    productService,
+    storeService: new StoreService(sync.stores, defaultPurchaseRepository),
+    purchaseService: new PurchaseService(defaultPurchaseRepository, productService),
+  };
+};

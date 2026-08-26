@@ -8,8 +8,7 @@ import type { ProductRepository } from '../domain/product-repository';
 import { HOUSE_ID } from '../domain/shopping-list';
 
 function createId() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-    return `category-${crypto.randomUUID()}`;
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `category-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 

@@ -2,6 +2,8 @@ import type { ShoppingCategory, ShoppingUnit } from './shopping-list';
 
 export type Category = {
   id: string;
+  /** UUID usado no Supabase; IDs locais legados permanecem intactos. */
+  syncId?: string;
   houseId: string;
   name: string;
   normalizedName: string;
@@ -9,10 +11,13 @@ export type Category = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 };
 
 export type Product = {
   id: string;
+  /** UUID usado no Supabase; IDs locais/históricos permanecem intactos. */
+  syncId?: string;
   houseId: string;
   name: string;
   normalizedName: string;
@@ -28,6 +33,7 @@ export type Product = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 };
 
 export type NewProduct = Pick<

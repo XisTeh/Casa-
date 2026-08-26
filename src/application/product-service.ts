@@ -13,11 +13,12 @@ import { HOUSE_ID } from '../domain/shopping-list';
 import type { ActiveHousehold } from '../domain/house';
 import type { CategoryRepository } from '../domain/category-repository';
 import type { ShoppingListService } from './shopping-list-service';
+import { isCatalogSyncRepository } from '../domain/catalog-sync';
+import type { ShoppingSyncStatus } from '../domain/shopping-list';
 
-function createId(prefix: string) {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-    return `${prefix}-${crypto.randomUUID()}`;
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function createId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `product-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export class DuplicateProductError extends Error {
@@ -37,6 +38,26 @@ export class ProductService {
     private readonly purchases: PurchaseRepository,
     private readonly shoppingList?: ShoppingListService,
   ) {}
+
+  subscribe(
+    houseId: string,
+    onChanged: () => void,
+    onStatusChanged: (status: ShoppingSyncStatus) => void,
+  ) {
+    return isCatalogSyncRepository(this.repository)
+      ? this.repository.subscribe(houseId, onChanged, onStatusChanged)
+      : () => undefined;
+  }
+
+  async syncNow(houseId: string) {
+    if (isCatalogSyncRepository(this.repository)) await this.repository.syncNow(houseId);
+  }
+
+  getLegacyMigration(houseId: string) {
+    return isCatalogSyncRepository(this.repository)
+      ? this.repository.getLegacyMigration(houseId)
+      : Promise.resolve(null);
+  }
 
   async list(houseId = HOUSE_ID): Promise<ProductWithLastPurchase[]> {
     await this.repository.initialize();
@@ -66,7 +87,7 @@ export class ProductService {
   }
 
   async create(input: NewProduct, houseId = HOUSE_ID) {
-    return this.createWithId(createId('product'), input, houseId);
+    return this.createWithId(createId(), input, houseId);
   }
 
   private async createWithId(id: string, input: NewProduct, houseId: string) {
@@ -107,8 +128,9 @@ export class ProductService {
           this.shoppingList!.update(
             item.id,
             {
-              productId: saved.id,
-              categoryId: saved.categoryId,
+              productId: saved.syncId ?? saved.id,
+              houseProductId: saved.id,
+              categoryId: category.syncId ?? category.id,
               categoryName: category.name,
             },
             houseId,
@@ -174,14 +196,16 @@ export class ProductService {
     const product = await this.repository.get(actor.houseId, id);
     if (!product || !product.active) throw new Error('Este produto não está ativo.');
     const existing = (await this.shoppingList.list(actor.houseId)).find(
-      (item) => item.productId === id || item.houseProductId === id,
+      (item) =>
+        item.productId === (product.syncId ?? product.id) || item.houseProductId === product.id,
     );
     if (existing) return { status: 'already-present' as const, item: existing };
     const category = await this.categories.get(actor.houseId, product.categoryId);
     const item = await this.shoppingList.create(
       {
-        productId: product.id,
-        categoryId: product.categoryId,
+        productId: product.syncId ?? product.id,
+        houseProductId: product.id,
+        categoryId: category?.syncId ?? product.categoryId,
         categoryName: category?.name,
         productName: product.name,
         preferredBrand: product.brand,
@@ -213,7 +237,7 @@ export class ProductService {
     const category = resolveShoppingCategory(categories, input.category);
     if (!category) throw new Error('A categoria Outros não está disponível.');
     return this.createWithId(
-      input.productId ?? createId('product'),
+      input.productId ?? createId(),
       {
         name: input.productName,
         brand: input.brand ?? '',

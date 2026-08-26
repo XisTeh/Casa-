@@ -2,10 +2,12 @@ import type { PurchaseRepository } from '../domain/purchase-repository';
 import { HOUSE_ID } from '../domain/shopping-list';
 import type { NewStore, Store, StoreUpdate, StoreWithStats } from '../domain/store';
 import type { StoreRepository } from '../domain/store-repository';
+import { isCatalogSyncRepository } from '../domain/catalog-sync';
+import { normalizeCatalogName } from '../domain/catalog';
 
 function createId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `store-${crypto.randomUUID()}`;
+    return crypto.randomUUID();
   }
   return `store-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -24,6 +26,12 @@ export class StoreService {
     private readonly repository: StoreRepository,
     private readonly purchaseRepository: PurchaseRepository,
   ) {}
+
+  subscribe(houseId: string, onChanged: () => void) {
+    return isCatalogSyncRepository(this.repository)
+      ? this.repository.subscribe(houseId, onChanged)
+      : () => undefined;
+  }
 
   async list(houseId = HOUSE_ID): Promise<StoreWithStats[]> {
     await Promise.all([this.repository.initialize(), this.purchaseRepository.initialize()]);
@@ -54,8 +62,7 @@ export class StoreService {
     const normalized = normalizeInput(input);
     if (!normalized.name) throw new Error('Informe o nome do mercado.');
     const existing = (await this.repository.list(houseId)).find(
-      (store) =>
-        store.name.toLocaleLowerCase('pt-BR') === normalized.name.toLocaleLowerCase('pt-BR'),
+      (store) => normalizeCatalogName(store.name) === normalizeCatalogName(normalized.name),
     );
     if (existing) throw new Error('Já existe um mercado com esse nome.');
     const now = new Date().toISOString();
@@ -63,6 +70,7 @@ export class StoreService {
       id: createId(),
       houseId,
       ...normalized,
+      normalizedName: normalizeCatalogName(normalized.name),
       active: true,
       createdAt: now,
       updatedAt: now,
@@ -82,7 +90,7 @@ export class StoreService {
       const duplicated = (await this.repository.list(houseId)).find(
         (store) =>
           store.id !== id &&
-          store.name.toLocaleLowerCase('pt-BR') === normalized.name.toLocaleLowerCase('pt-BR'),
+          normalizeCatalogName(store.name) === normalizeCatalogName(normalized.name),
       );
       if (duplicated) throw new Error('Já existe um mercado com esse nome.');
       cleanChanges.name = normalized.name;

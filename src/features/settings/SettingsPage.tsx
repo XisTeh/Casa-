@@ -28,6 +28,7 @@ import type { HouseInviteReceipt } from '../../domain/online-house';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
 import { useShoppingList } from '../shopping-list/ShoppingListContext';
+import { useProducts } from '../products/ProductContext';
 
 type DialogState =
   'edit-house' | 'create-house' | 'add-member' | 'edit-profile' | HouseMember | null;
@@ -37,6 +38,7 @@ export function SettingsPage() {
   const household = useHousehold();
   const auth = useOptionalAuth();
   const { syncStatus } = useShoppingList();
+  const { syncStatus: catalogSyncStatus } = useProducts();
   const { houses, activeHouse, members, activeMember } = household;
   const [dialog, setDialog] = useState<DialogState>(null);
   const [removing, setRemoving] = useState<HouseMember | null>(null);
@@ -45,6 +47,17 @@ export function SettingsPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [joining, setJoining] = useState(false);
   const isOwner = activeMember.role === 'owner';
+  const totalPending = syncStatus.pending + catalogSyncStatus.pending;
+  const generalSyncState =
+    syncStatus.state === 'offline' || catalogSyncStatus.state === 'offline'
+      ? 'offline'
+      : syncStatus.state === 'error' || catalogSyncStatus.state === 'error'
+        ? 'error'
+        : syncStatus.state === 'syncing' || catalogSyncStatus.state === 'syncing'
+          ? 'syncing'
+          : totalPending
+            ? 'pending'
+            : 'synced';
 
   useEffect(() => {
     if (window.location.hash !== '#aplicativo') return;
@@ -241,19 +254,21 @@ export function SettingsPage() {
               <Mail aria-hidden="true" size={17} /> {household.accountEmail}
             </p>
             <small>
-              Sua identidade, suas Casas e a Lista de Compras usam uma sessão protegida. Os demais
-              módulos continuam locais neste dispositivo.
+              Sua identidade, Casas, Lista, categorias, produtos e mercados usam uma sessão
+              protegida. Compras, histórico, gastos e orçamento continuam locais neste dispositivo.
             </small>
             <p className="settings-sync-status" role="status">
-              {syncStatus.state === 'offline'
-                ? syncStatus.pending
-                  ? `Offline · ${syncStatus.pending} alterações pendentes`
+              {generalSyncState === 'offline'
+                ? totalPending
+                  ? `Offline · ${totalPending} alterações pendentes`
                   : 'Offline'
-                : syncStatus.state === 'syncing'
+                : generalSyncState === 'syncing'
                   ? 'Sincronizando…'
-                  : syncStatus.pending
-                    ? `${syncStatus.pending} alterações pendentes`
-                    : 'Sincronizado'}
+                  : totalPending
+                    ? `${totalPending} alterações pendentes`
+                    : generalSyncState === 'error'
+                      ? 'Falha temporária de sincronização'
+                      : 'Sincronizado'}
             </p>
             {auth && (
               <Button onClick={() => void auth.signOut()} variant="secondary">

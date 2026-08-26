@@ -86,6 +86,98 @@ export type Database = {
         Update: { used_at?: string | null; used_by?: string | null };
         Relationships: [];
       };
+      categories: {
+        Row: {
+          id: string;
+          house_id: string;
+          key: string | null;
+          name: string;
+          normalized_name: string;
+          active: boolean;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['categories']['Row']> & {
+          id: string;
+          house_id: string;
+          name: string;
+          normalized_name: string;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Update: Partial<Database['public']['Tables']['categories']['Row']>;
+        Relationships: [];
+      };
+      products: {
+        Row: {
+          id: string;
+          house_id: string;
+          category_id: string;
+          name: string;
+          normalized_name: string;
+          brand: string;
+          default_quantity: number | null;
+          default_unit: string;
+          notes: string;
+          favorite: boolean;
+          is_recurring: boolean;
+          recurrence_days: number | null;
+          active: boolean;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['products']['Row']> & {
+          id: string;
+          house_id: string;
+          category_id: string;
+          name: string;
+          normalized_name: string;
+          default_unit: string;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Update: Partial<Database['public']['Tables']['products']['Row']>;
+        Relationships: [];
+      };
+      stores: {
+        Row: {
+          id: string;
+          house_id: string;
+          name: string;
+          normalized_name: string;
+          nickname: string;
+          address: string;
+          notes: string;
+          active: boolean;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['stores']['Row']> & {
+          id: string;
+          house_id: string;
+          name: string;
+          normalized_name: string;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Update: Partial<Database['public']['Tables']['stores']['Row']>;
+        Relationships: [];
+      };
       shopping_items: {
         Row: {
           id: string;
@@ -177,6 +269,57 @@ export type Database = {
           item_deleted_at: string | null;
         };
         Returns: Database['public']['Tables']['shopping_items']['Row'][];
+      };
+      apply_category: {
+        Args: {
+          item_id: string;
+          target_house_id: string;
+          item_key: string;
+          item_name: string;
+          item_normalized_name: string;
+          item_active: boolean;
+          item_created_at: string;
+          item_updated_at: string;
+          item_deleted_at: string | null;
+        };
+        Returns: Database['public']['Tables']['categories']['Row'][];
+      };
+      apply_product: {
+        Args: {
+          item_id: string;
+          target_house_id: string;
+          target_category_id: string;
+          item_name: string;
+          item_normalized_name: string;
+          item_brand: string;
+          item_default_quantity: number | null;
+          item_default_unit: string;
+          item_notes: string;
+          item_favorite: boolean;
+          item_is_recurring: boolean;
+          item_recurrence_days: number | null;
+          item_active: boolean;
+          item_created_at: string;
+          item_updated_at: string;
+          item_deleted_at: string | null;
+        };
+        Returns: Database['public']['Tables']['products']['Row'][];
+      };
+      apply_store: {
+        Args: {
+          item_id: string;
+          target_house_id: string;
+          item_name: string;
+          item_normalized_name: string;
+          item_nickname: string;
+          item_address: string;
+          item_notes: string;
+          item_active: boolean;
+          item_created_at: string;
+          item_updated_at: string;
+          item_deleted_at: string | null;
+        };
+        Returns: Database['public']['Tables']['stores']['Row'][];
       };
     };
     Enums: { house_role: 'owner' | 'member'; house_member_status: 'active' | 'inactive' };

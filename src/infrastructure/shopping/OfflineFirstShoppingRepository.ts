@@ -328,7 +328,12 @@ export class OfflineFirstShoppingRepository implements OnlineShoppingListReposit
     const native = await this.database.getNativeDatabase();
     if (!native)
       return [...this.database.getMemoryDatabase().syncOutbox.values()]
-        .filter((entry) => entry.houseId === houseId && entry.actorId === this.currentUserId)
+        .filter(
+          (entry): entry is ShoppingSyncOutboxEntry =>
+            entry.entityType === 'shopping-item' &&
+            entry.houseId === houseId &&
+            entry.actorId === this.currentUserId,
+        )
         .map(clone)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const transaction = native.transaction(CASAE_STORES.syncOutbox, 'readonly');
@@ -340,13 +345,18 @@ export class OfflineFirstShoppingRepository implements OnlineShoppingListReposit
     );
     await transactionToPromise(transaction);
     return entries
-      .filter((entry) => entry.actorId === this.currentUserId)
+      .filter(
+        (entry) => entry.entityType === 'shopping-item' && entry.actorId === this.currentUserId,
+      )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   private async getOutbox(id: string) {
     const native = await this.database.getNativeDatabase();
-    if (!native) return clone(this.database.getMemoryDatabase().syncOutbox.get(id));
+    if (!native) {
+      const entry = this.database.getMemoryDatabase().syncOutbox.get(id);
+      return entry?.entityType === 'shopping-item' ? clone(entry) : undefined;
+    }
     const transaction = native.transaction(CASAE_STORES.syncOutbox, 'readonly');
     const entry = await requestToPromise(
       transaction.objectStore(CASAE_STORES.syncOutbox).get(id) as IDBRequest<
