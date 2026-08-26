@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach } from 'vitest';
 import { App } from '../app/App';
+import { resolveAppRuntimeMode } from '../lib/env';
 
 describe('App', () => {
   beforeEach(() => window.history.pushState({}, '', '/'));
@@ -12,6 +13,24 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: /olá, raabe/i })).toBeInTheDocument();
     expect(screen.getAllByText('Casa Raabe & Sidney').length).toBeGreaterThan(0);
     expect(await screen.findByText('8 itens faltando')).toBeInTheDocument();
+  });
+
+  it('nunca permite fallback local silencioso em Production sem Supabase', () => {
+    expect(
+      resolveAppRuntimeMode({
+        allowLocalFallback: false,
+        production: true,
+        supabaseConfigured: false,
+      }),
+    ).toBe('configuration-error');
+    expect(
+      resolveAppRuntimeMode({
+        allowLocalFallback: false,
+        production: true,
+        remoteMode: false,
+        supabaseConfigured: false,
+      }),
+    ).toBe('configuration-error');
   });
 
   it('navega para uma rota principal sem recarregar a aplicação', async () => {

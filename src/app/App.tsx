@@ -24,7 +24,7 @@ import { useHousehold } from '../features/house/HouseContext';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import type { AuthService } from '../application/auth-service';
 import type { OnlineHouseService } from '../application/online-house-service';
-import { isSupabaseConfigured } from '../lib/env';
+import { isSupabaseConfigured, resolveAppRuntimeMode } from '../lib/env';
 import {
   createDefaultAuthService,
   createDefaultOnlineHouseService,
@@ -35,7 +35,7 @@ import { AuthProvider } from '../features/auth/AuthProvider';
 import { useAuth } from '../features/auth/AuthContext';
 import { AuthPage } from '../features/auth/AuthPage';
 import { OnlineHouseProvider } from '../features/house/OnlineHouseProvider';
-import { LoadingState } from '../components/StateView/StateView';
+import { ErrorState, LoadingState } from '../components/StateView/StateView';
 import { useMemo } from 'react';
 
 type AppProps = {
@@ -93,17 +93,35 @@ export function App({
   houseService,
   authService,
   onlineHouseService,
-  remoteMode = isSupabaseConfigured(),
+  remoteMode,
 }: AppProps) {
+  const runtimeMode = resolveAppRuntimeMode({
+    allowLocalFallback: import.meta.env.DEV || ['test', 'e2e'].includes(import.meta.env.MODE),
+    production: import.meta.env.PROD,
+    remoteMode,
+    supabaseConfigured: isSupabaseConfigured(),
+  });
+  const resolvedRemoteMode = runtimeMode === 'remote';
   const resolvedAuthService = useMemo(
-    () => (remoteMode ? (authService ?? createDefaultAuthService()) : undefined),
-    [authService, remoteMode],
+    () => (resolvedRemoteMode ? (authService ?? createDefaultAuthService()) : undefined),
+    [authService, resolvedRemoteMode],
   );
   const resolvedHouseService = useMemo(
-    () => (remoteMode ? (onlineHouseService ?? createDefaultOnlineHouseService()) : undefined),
-    [onlineHouseService, remoteMode],
+    () =>
+      resolvedRemoteMode ? (onlineHouseService ?? createDefaultOnlineHouseService()) : undefined,
+    [onlineHouseService, resolvedRemoteMode],
   );
-  if (remoteMode) {
+  if (runtimeMode === 'configuration-error') {
+    return (
+      <main className="auth-page">
+        <ErrorState
+          description="A configuração online está indisponível. Tente novamente em alguns instantes."
+          title="Não foi possível conectar o Casaê."
+        />
+      </main>
+    );
+  }
+  if (resolvedRemoteMode) {
     return (
       <BrowserRouter>
         <AuthProvider service={resolvedAuthService!}>

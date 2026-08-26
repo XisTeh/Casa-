@@ -50,13 +50,7 @@ export function LoadingState({
 export function ErrorState({
   action,
   description = 'Não foi possível carregar estas informações.',
-}: Pick<StateViewProps, 'action' | 'description'>) {
-  return (
-    <StateView
-      title="Algo não saiu como esperado"
-      description={description}
-      icon={AlertCircle}
-      action={action}
-    />
-  );
+  title = 'Algo não saiu como esperado',
+}: Pick<StateViewProps, 'action' | 'description'> & { title?: string }) {
+  return <StateView title={title} description={description} icon={AlertCircle} action={action} />;
 }
