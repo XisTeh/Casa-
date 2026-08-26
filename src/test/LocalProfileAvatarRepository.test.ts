@@ -17,17 +17,22 @@ describe('LocalProfileAvatarRepository', () => {
     const first = new LocalProfileAvatarRepository(
       new CasaeLocalDatabase(name, { migrateLegacy: false }),
     );
-    await first.save(
-      'profile-a',
-      new NodeBlob(['foto-a'], { type: 'image/webp' }) as unknown as Blob,
-    );
+    const avatarBlob = new NodeBlob(['foto-a'], { type: 'image/webp' }) as unknown as Blob;
+    const sourceBlob = new NodeBlob(['fonte-a'], { type: 'image/webp' }) as unknown as Blob;
+    await first.save('profile-a', {
+      avatarBlob,
+      avatarSourceBlob: sourceBlob,
+      avatarCrop: { zoom: 1.5, centerX: 0.4, centerY: 0.6 },
+    });
 
     const restored = new LocalProfileAvatarRepository(
       new CasaeLocalDatabase(name, { migrateLegacy: false }),
     );
     const photo = await restored.get('profile-a');
-    expect(photo?.type).toBe('image/webp');
-    expect(await photo?.text()).toBe('foto-a');
+    expect(photo?.avatarBlob.type).toBe('image/webp');
+    expect(await photo?.avatarBlob.text()).toBe('foto-a');
+    expect(await photo?.avatarSourceBlob?.text()).toBe('fonte-a');
+    expect(photo?.avatarCrop).toEqual({ zoom: 1.5, centerX: 0.4, centerY: 0.6 });
     expect(await restored.get('profile-b')).toBeUndefined();
 
     await restored.save('profile-a', null);

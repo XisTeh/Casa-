@@ -14,6 +14,7 @@ import type {
 } from '../domain/online-house';
 import type { OnlineHouseRepository } from '../domain/online-house-repository';
 import type { ProfileAvatarRepository } from '../domain/profile-avatar-repository';
+import type { ProfileAvatarData } from '../domain/profile-avatar';
 import { CategoryService } from '../application/category-service';
 import { LocalCategoryRepository } from '../infrastructure/catalog/LocalCategoryRepository';
 import { LocalProductRepository } from '../infrastructure/catalog/LocalProductRepository';
@@ -42,12 +43,12 @@ class MemoryPreference implements ActiveHousePreference {
 }
 
 class MemoryAvatars implements ProfileAvatarRepository {
-  values = new Map<string, Blob>();
+  values = new Map<string, ProfileAvatarData>();
   async get(id: string) {
     return this.values.get(id);
   }
-  async save(id: string, blob: Blob | null) {
-    if (blob) this.values.set(id, blob);
+  async save(id: string, avatar: ProfileAvatarData | null) {
+    if (avatar) this.values.set(id, avatar);
     else this.values.delete(id);
   }
 }
@@ -268,7 +269,7 @@ describe('OnlineHouseService', () => {
     const snapshot = await service.updateMember('user-a', 'house-1', 'user-a', {
       displayName: 'Raabe Silva',
       role: 'owner',
-      avatarBlob: photo,
+      avatar: { avatarBlob: photo },
     });
     expect(snapshot.activeMember?.displayName).toBe('Raabe Silva');
     expect(await snapshot.activeMember?.avatarBlob?.text()).toBe('avatar');

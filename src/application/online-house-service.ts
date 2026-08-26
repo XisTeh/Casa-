@@ -3,6 +3,7 @@ import type { OnlineHouseRepository } from '../domain/online-house-repository';
 import type { ProfileAvatarRepository } from '../domain/profile-avatar-repository';
 import type { UserProfile } from '../domain/online-house';
 import type { DefaultCategoryInitializer } from './house-service';
+import type { ProfileAvatarData } from '../domain/profile-avatar';
 
 export interface ActiveHousePreference {
   get(): string | undefined;
@@ -37,7 +38,12 @@ export class BrowserOnlineHouseholdCache implements OnlineHouseholdCache {
     if (typeof localStorage === 'undefined') return;
     const serializable = {
       ...snapshot,
-      members: snapshot.members.map((member) => ({ ...member, avatarBlob: undefined })),
+      members: snapshot.members.map((member) => ({
+        ...member,
+        avatarBlob: undefined,
+        avatarSourceBlob: undefined,
+        avatarCrop: undefined,
+      })),
     };
     localStorage.setItem(this.key(userId), JSON.stringify(serializable));
   }
@@ -122,21 +128,21 @@ export class OnlineHouseService {
     if (preferredId !== activeHouse.id) this.preference.set(activeHouse.id);
     const remoteMembers = await this.repository.listMembers(activeHouse.id);
     const members = await Promise.all(
-      remoteMembers.map(
-        async (member) =>
-          ({
-            id: member.userId,
-            houseId: member.houseId,
-            displayName: member.profile.displayName,
-            avatarSeed: member.profile.displayName,
-            avatarBlob: await this.avatars.get(member.userId),
-            role: member.role,
-            status: member.status,
-            joinedAt: member.joinedAt,
-            createdAt: member.profile.createdAt,
-            updatedAt: member.profile.updatedAt,
-          }) satisfies HouseMember,
-      ),
+      remoteMembers.map(async (member) => {
+        const avatar = await this.avatars.get(member.userId);
+        return {
+          id: member.userId,
+          houseId: member.houseId,
+          displayName: member.profile.displayName,
+          avatarSeed: member.profile.displayName,
+          ...avatar,
+          role: member.role,
+          status: member.status,
+          joinedAt: member.joinedAt,
+          createdAt: member.profile.createdAt,
+          updatedAt: member.profile.updatedAt,
+        } satisfies HouseMember;
+      }),
     );
     const activeMember = members.find((member) => member.id === userId);
     if (!activeMember) throw new Error('Sua conta não possui acesso à Casa ativa.');
@@ -177,11 +183,11 @@ export class OnlineHouseService {
     userId: string,
     houseId: string,
     memberId: string,
-    changes: { displayName: string; role: HouseMemberRole; avatarBlob?: Blob | null },
+    changes: { displayName: string; role: HouseMemberRole; avatar?: ProfileAvatarData | null },
   ) {
     if (memberId === userId) {
       await this.repository.updateProfile(userId, validName(changes.displayName, 'seu nome'));
-      if ('avatarBlob' in changes) await this.avatars.save(userId, changes.avatarBlob ?? null);
+      if ('avatar' in changes) await this.avatars.save(userId, changes.avatar ?? null);
     } else {
       await this.repository.updateMemberRole(houseId, memberId, changes.role);
     }

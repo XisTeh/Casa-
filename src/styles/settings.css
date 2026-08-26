@@ -265,6 +265,76 @@
   width: 100%;
   font-weight: var(--font-weight-semibold);
 }
+.settings-photo-field__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.photo-crop-backdrop {
+  z-index: calc(var(--z-overlay) + 1);
+}
+.photo-crop-dialog {
+  width: min(100%, 32rem);
+  overflow-y: auto;
+}
+.photo-crop-dialog__hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.photo-crop-dialog__stage {
+  position: relative;
+  width: min(72vw, 320px);
+  aspect-ratio: 1;
+  align-self: center;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  outline: none;
+  background: var(--color-petrol-950);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.photo-crop-dialog__stage:active {
+  cursor: grabbing;
+}
+.photo-crop-dialog__stage:focus-visible {
+  outline: 3px solid var(--color-terracotta-500);
+  outline-offset: 3px;
+}
+.photo-crop-dialog__stage img {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+}
+.photo-crop-dialog__mask {
+  position: absolute;
+  border: 2px solid rgb(255 255 255 / 92%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgb(5 25 30 / 62%);
+  pointer-events: none;
+  inset: 0;
+}
+.photo-crop-dialog__zoom {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-5) 0 0;
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+.photo-crop-dialog__zoom span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.photo-crop-dialog__zoom input {
+  width: 100%;
+  accent-color: var(--color-terracotta-600);
+}
 .invite-dialog__content {
   display: grid;
   gap: var(--space-4);
@@ -328,6 +398,16 @@
   }
   .settings-photo-field__actions .button {
     width: 100%;
+  }
+  .settings-photo-field__buttons {
+    width: 100%;
+  }
+  .photo-crop-dialog {
+    max-height: calc(100dvh - var(--space-4));
+    padding: var(--space-4);
+  }
+  .photo-crop-dialog__stage {
+    width: min(78vw, 300px);
   }
 }
 @media (max-width: 380px) {

@@ -5,6 +5,7 @@ import {
   type Category,
   type Product,
 } from '../../domain/catalog';
+import type { AvatarCrop } from '../../domain/profile-avatar';
 import {
   HOUSE_ID,
   initialShoppingListSeed,
@@ -64,6 +65,8 @@ export type LocalMetadata = {
 export type LocalProfileAvatar = {
   profileId: string;
   avatarBlob: Blob;
+  avatarSourceBlob?: Blob;
+  avatarCrop?: AvatarCrop;
   updatedAt: string;
 };
 

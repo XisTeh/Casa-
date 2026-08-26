@@ -110,7 +110,7 @@ describe('HouseService', () => {
       {
         displayName: 'Raabe A',
         role: original.activeMember.role,
-        avatarBlob: photoA,
+        avatar: { avatarBlob: photoA },
       },
     );
     expect(snapshot.activeMember.avatarBlob).toEqual(photoA);
@@ -122,7 +122,7 @@ describe('HouseService', () => {
       snapshot.activeHouse.id,
       snapshot.activeMember.id,
       snapshot.activeMember.id,
-      { displayName: 'Raabe B', role: 'owner', avatarBlob: photoB },
+      { displayName: 'Raabe B', role: 'owner', avatar: { avatarBlob: photoB } },
     );
 
     const restoredA = await service.switchHouse(original.activeHouse.id);

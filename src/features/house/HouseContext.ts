@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { House, HouseMember, HouseMemberRole } from '../../domain/house';
 import type { HouseInviteReceipt } from '../../domain/online-house';
+import type { ProfileAvatarData } from '../../domain/profile-avatar';
 
 export type HouseContextValue = {
   houses: House[];
@@ -20,7 +21,7 @@ export type HouseContextValue = {
     memberId: string,
     displayName: string,
     role: HouseMemberRole,
-    avatarBlob?: Blob | null,
+    avatar?: ProfileAvatarData | null,
   ): Promise<void>;
   removeMember(memberId: string): Promise<void>;
   createInvite?(): Promise<HouseInviteReceipt>;

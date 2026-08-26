@@ -304,8 +304,8 @@ export function SettingsPage() {
         <EditProfileDialog
           member={activeMember}
           onClose={() => setDialog(null)}
-          onSave={async (name, avatarBlob) => {
-            await household.updateMember(activeMember.id, name, activeMember.role, avatarBlob);
+          onSave={async (name, avatar) => {
+            await household.updateMember(activeMember.id, name, activeMember.role, avatar);
             setFeedback('Perfil atualizado.');
           }}
         />

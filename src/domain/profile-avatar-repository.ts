@@ -1,4 +1,6 @@
+import type { ProfileAvatarData } from './profile-avatar';
+
 export interface ProfileAvatarRepository {
-  get(profileId: string): Promise<Blob | undefined>;
-  save(profileId: string, avatarBlob: Blob | null): Promise<void>;
+  get(profileId: string): Promise<ProfileAvatarData | undefined>;
+  save(profileId: string, avatar: ProfileAvatarData | null): Promise<void>;
 }

@@ -311,7 +311,7 @@ test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) 
     'base64',
   );
   const secondPhoto = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlK6KsAAAAASUVORK5CYII=',
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     'base64',
   );
 
@@ -323,6 +323,13 @@ test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) 
     mimeType: 'image/png',
     buffer: firstPhoto,
   });
+  let cropDialog = page.getByRole('dialog', { name: 'Ajustar foto' });
+  await expect(cropDialog).toBeVisible();
+  await cropDialog.getByLabel('Zoom da foto').fill('1.4');
+  await cropDialog
+    .getByLabel('Área de recorte da foto. Use as setas para reposicionar.')
+    .press('ArrowRight');
+  await cropDialog.getByRole('button', { name: 'Usar foto' }).click();
   await expect(dialog.getByRole('img', { name: 'Foto de perfil de Raabe' })).toBeVisible();
   await dialog.getByLabel('Nome').fill('Raabe Foto');
   await dialog.getByRole('button', { name: 'Salvar alterações' }).click();
@@ -357,6 +364,14 @@ test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) 
 
   await page.getByRole('button', { name: 'Editar perfil' }).click();
   dialog = page.getByRole('dialog', { name: 'Editar perfil' });
+  await dialog.getByRole('button', { name: 'Reposicionar' }).click();
+  cropDialog = page.getByRole('dialog', { name: 'Ajustar foto' });
+  await expect(cropDialog.getByLabel('Zoom da foto')).toHaveValue('1.4');
+  await cropDialog.getByRole('button', { name: 'Cancelar' }).click();
+  await dialog.getByRole('button', { name: 'Cancelar' }).click();
+
+  await page.getByRole('button', { name: 'Editar perfil' }).click();
+  dialog = page.getByRole('dialog', { name: 'Editar perfil' });
   await dialog.getByLabel('Nome').fill('Alteração cancelada');
   await dialog.getByRole('button', { name: 'Remover foto de perfil' }).click();
   await dialog.getByRole('button', { name: 'Cancelar' }).click();
@@ -370,6 +385,8 @@ test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) 
     mimeType: 'image/png',
     buffer: secondPhoto,
   });
+  cropDialog = page.getByRole('dialog', { name: 'Ajustar foto' });
+  await cropDialog.getByRole('button', { name: 'Usar foto' }).click();
   await expect(dialog.getByRole('button', { name: 'Trocar foto' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Salvar alterações' }).click();
 

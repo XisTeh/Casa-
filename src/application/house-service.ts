@@ -1,5 +1,6 @@
 import type { House, HouseMember, HouseMemberRole } from '../domain/house';
 import type { HouseRepository } from '../domain/house-repository';
+import type { ProfileAvatarData } from '../domain/profile-avatar';
 
 export interface DefaultCategoryInitializer {
   ensureDefaultCategoriesForHouse(houseId: string): Promise<unknown>;
@@ -133,7 +134,7 @@ export class HouseService {
     houseId: string,
     actorId: string,
     memberId: string,
-    changes: { displayName: string; role: HouseMemberRole; avatarBlob?: Blob | null },
+    changes: { displayName: string; role: HouseMemberRole; avatar?: ProfileAvatarData | null },
   ) {
     const actor = await this.requireMember(houseId, actorId);
     const member = await this.requireMember(houseId, memberId);
@@ -150,11 +151,17 @@ export class HouseService {
       if (owners.length === 1)
         throw new Error('Transfira a função antes de remover o único owner.');
     }
+    const avatarChanges =
+      changes.avatar === undefined
+        ? {}
+        : changes.avatar
+          ? changes.avatar
+          : { avatarBlob: undefined, avatarSourceBlob: undefined, avatarCrop: undefined };
     await this.repository.saveMember({
       ...member,
       displayName: validName(changes.displayName, 'o nome do membro'),
       role: changes.role,
-      avatarBlob: 'avatarBlob' in changes ? (changes.avatarBlob ?? undefined) : member.avatarBlob,
+      ...avatarChanges,
       updatedAt: new Date().toISOString(),
     });
     return this.getSnapshot();

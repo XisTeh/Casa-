@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import type { HouseService, HouseholdSnapshot } from '../../application/house-service';
 import { defaultHouseService } from '../../app/app-services';
 import type { HouseMemberRole } from '../../domain/house';
+import type { ProfileAvatarData } from '../../domain/profile-avatar';
 import { ErrorState, LoadingState } from '../../components/StateView/StateView';
 import { houseContext } from './HouseContext';
 
@@ -64,13 +65,13 @@ export function HouseProvider({
         memberId: string,
         displayName: string,
         role: HouseMemberRole,
-        avatarBlob?: Blob | null,
+        avatar?: ProfileAvatarData | null,
       ) =>
         run(() =>
           service.updateMember(activeHouse.id, activeMember.id, memberId, {
             displayName,
             role,
-            ...(avatarBlob !== undefined ? { avatarBlob } : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
           }),
         ),
       removeMember: (memberId: string) =>

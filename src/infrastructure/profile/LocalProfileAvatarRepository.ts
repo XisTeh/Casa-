@@ -1,4 +1,5 @@
 import type { ProfileAvatarRepository } from '../../domain/profile-avatar-repository';
+import type { ProfileAvatarData } from '../../domain/profile-avatar';
 import {
   CASAE_STORES,
   CasaeLocalDatabase,
@@ -14,7 +15,14 @@ export class LocalProfileAvatarRepository implements ProfileAvatarRepository {
     await this.database.initialize();
     const native = await this.database.getNativeDatabase();
     if (!native) {
-      return this.database.getMemoryDatabase().profileAvatars.get(profileId)?.avatarBlob;
+      const record = this.database.getMemoryDatabase().profileAvatars.get(profileId);
+      return record
+        ? {
+            avatarBlob: record.avatarBlob,
+            avatarSourceBlob: record.avatarSourceBlob,
+            avatarCrop: record.avatarCrop,
+          }
+        : undefined;
     }
     const transaction = native.transaction(CASAE_STORES.profileAvatars, 'readonly');
     const record = await requestToPromise(
@@ -23,17 +31,23 @@ export class LocalProfileAvatarRepository implements ProfileAvatarRepository {
       >,
     );
     await transactionToPromise(transaction);
-    return record?.avatarBlob;
+    return record
+      ? {
+          avatarBlob: record.avatarBlob,
+          avatarSourceBlob: record.avatarSourceBlob,
+          avatarCrop: record.avatarCrop,
+        }
+      : undefined;
   }
 
-  async save(profileId: string, avatarBlob: Blob | null) {
+  async save(profileId: string, avatar: ProfileAvatarData | null) {
     await this.database.initialize();
     const native = await this.database.getNativeDatabase();
     if (!native) {
-      if (avatarBlob) {
+      if (avatar) {
         this.database.getMemoryDatabase().profileAvatars.set(profileId, {
           profileId,
-          avatarBlob,
+          ...avatar,
           updatedAt: new Date().toISOString(),
         });
       } else {
@@ -43,10 +57,10 @@ export class LocalProfileAvatarRepository implements ProfileAvatarRepository {
     }
     const transaction = native.transaction(CASAE_STORES.profileAvatars, 'readwrite');
     const store = transaction.objectStore(CASAE_STORES.profileAvatars);
-    if (avatarBlob) {
+    if (avatar) {
       store.put({
         profileId,
-        avatarBlob,
+        ...avatar,
         updatedAt: new Date().toISOString(),
       } satisfies LocalProfileAvatar);
     } else {

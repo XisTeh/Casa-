@@ -4,6 +4,7 @@ import type {
   OnlineHouseholdSnapshot,
 } from '../../application/online-house-service';
 import type { HouseMemberRole } from '../../domain/house';
+import type { ProfileAvatarData } from '../../domain/profile-avatar';
 import { ErrorState, LoadingState } from '../../components/StateView/StateView';
 import { houseContext } from './HouseContext';
 import { OnboardingPage } from './OnboardingPage';
@@ -72,13 +73,13 @@ export function OnlineHouseProvider({
         memberId: string,
         displayName: string,
         role: HouseMemberRole,
-        avatarBlob?: Blob | null,
+        avatar?: ProfileAvatarData | null,
       ) =>
         run(() =>
           service.updateMember(userId, activeHouse.id, memberId, {
             displayName,
             role,
-            ...(avatarBlob !== undefined ? { avatarBlob } : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
           }),
         ),
       removeMember: (memberId: string) =>

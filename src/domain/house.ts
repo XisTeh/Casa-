@@ -1,3 +1,5 @@
+import type { AvatarCrop } from './profile-avatar';
+
 export const LEGACY_HOUSE_ID = 'house-raabe-sidney';
 export const LEGACY_HOUSE_NAME = 'Casa Raabe & Sidney';
 export const LEGACY_MEMBER_ID = 'member-raabe-legacy';
@@ -21,6 +23,8 @@ export type HouseMember = {
   displayName: string;
   avatarSeed: string;
   avatarBlob?: Blob;
+  avatarSourceBlob?: Blob;
+  avatarCrop?: AvatarCrop;
   role: HouseMemberRole;
   status: HouseMemberStatus;
   joinedAt: string;

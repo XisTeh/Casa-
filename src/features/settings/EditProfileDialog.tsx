@@ -1,9 +1,16 @@
-import { ImagePlus, Trash2, X } from 'lucide-react';
+import { Crop, ImagePlus, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { optimizeProfilePhoto } from '../../application/profile-photo';
+import { prepareProfilePhotoSource } from '../../application/profile-photo';
 import { Button } from '../../components/Button/Button';
 import { ProfileAvatar } from '../../components/ProfileAvatar/ProfileAvatar';
 import type { HouseMember } from '../../domain/house';
+import { DEFAULT_AVATAR_CROP, type ProfileAvatarData } from '../../domain/profile-avatar';
+import { PhotoCropDialog } from './PhotoCropDialog';
+
+type CropDraft = {
+  sourceBlob: Blob;
+  initialCrop: typeof DEFAULT_AVATAR_CROP;
+};
 
 export function EditProfileDialog({
   member,
@@ -12,21 +19,37 @@ export function EditProfileDialog({
 }: {
   member: HouseMember;
   onClose: () => void;
-  onSave: (name: string, avatarBlob: Blob | null) => Promise<void>;
+  onSave: (name: string, avatar: ProfileAvatarData | null) => Promise<void>;
 }) {
   const [name, setName] = useState(member.displayName);
-  const [avatarBlob, setAvatarBlob] = useState<Blob | null>(member.avatarBlob ?? null);
+  const [avatar, setAvatar] = useState<ProfileAvatarData | null>(() =>
+    member.avatarBlob
+      ? {
+          avatarBlob: member.avatarBlob,
+          avatarSourceBlob: member.avatarSourceBlob,
+          avatarCrop: member.avatarCrop,
+        }
+      : null,
+  );
+  const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cropOpenRef = useRef(false);
   const inputId = useId();
+
+  useEffect(() => {
+    cropOpenRef.current = Boolean(cropDraft);
+  }, [cropDraft]);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     nameRef.current?.focus();
-    const escape = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !cropOpenRef.current) onClose();
+    };
     window.addEventListener('keydown', escape);
     return () => {
       window.removeEventListener('keydown', escape);
@@ -40,13 +63,26 @@ export function EditProfileDialog({
     setProcessing(true);
     setError(null);
     try {
-      setAvatarBlob(await optimizeProfilePhoto(file));
+      setCropDraft({
+        sourceBlob: await prepareProfilePhotoSource(file),
+        initialCrop: DEFAULT_AVATAR_CROP,
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível preparar a foto.');
     } finally {
       setProcessing(false);
       event.target.value = '';
     }
+  }
+
+  function repositionPhoto() {
+    if (!avatar) return;
+    setError(null);
+    setCropDraft({
+      sourceBlob: avatar.avatarSourceBlob ?? avatar.avatarBlob,
+      initialCrop:
+        avatar.avatarSourceBlob && avatar.avatarCrop ? avatar.avatarCrop : DEFAULT_AVATAR_CROP,
+    });
   }
 
   async function submit(event: FormEvent) {
@@ -59,7 +95,7 @@ export function EditProfileDialog({
     setSaving(true);
     setError(null);
     try {
-      await onSave(name, avatarBlob);
+      await onSave(name, avatar);
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível salvar.');
@@ -96,14 +132,14 @@ export function EditProfileDialog({
             <ProfileAvatar
               profile={{
                 displayName: name || member.displayName,
-                avatarBlob: avatarBlob ?? undefined,
+                avatarBlob: avatar?.avatarBlob,
               }}
               size="profile"
             />
             <div className="settings-photo-field__actions">
               <span>Foto de perfil</span>
               <input
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 aria-label="Selecionar foto de perfil"
                 className="sr-only"
                 id={inputId}
@@ -111,29 +147,36 @@ export function EditProfileDialog({
                 ref={fileRef}
                 type="file"
               />
-              <Button
-                aria-controls={inputId}
-                disabled={processing}
-                onClick={() => fileRef.current?.click()}
-                type="button"
-                variant="secondary"
-              >
-                <ImagePlus aria-hidden="true" size={17} />
-                {processing ? 'Otimizando foto…' : avatarBlob ? 'Trocar foto' : 'Escolher foto'}
-              </Button>
-              {avatarBlob && (
+              <div className="settings-photo-field__buttons">
                 <Button
-                  aria-label="Remover foto de perfil"
-                  onClick={() => {
-                    setAvatarBlob(null);
-                    setError(null);
-                  }}
+                  aria-controls={inputId}
+                  disabled={processing}
+                  onClick={() => fileRef.current?.click()}
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
                 >
-                  <Trash2 aria-hidden="true" size={17} /> Remover foto
+                  <ImagePlus aria-hidden="true" size={17} />
+                  {processing ? 'Preparando foto…' : avatar ? 'Trocar foto' : 'Escolher foto'}
                 </Button>
-              )}
+                {avatar && (
+                  <>
+                    <Button onClick={repositionPhoto} type="button" variant="secondary">
+                      <Crop aria-hidden="true" size={17} /> Reposicionar
+                    </Button>
+                    <Button
+                      aria-label="Remover foto de perfil"
+                      onClick={() => {
+                        setAvatar(null);
+                        setError(null);
+                      }}
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 aria-hidden="true" size={17} /> Remover foto
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <label className="settings-field">
@@ -160,6 +203,17 @@ export function EditProfileDialog({
           </footer>
         </form>
       </section>
+      {cropDraft && (
+        <PhotoCropDialog
+          initialCrop={cropDraft.initialCrop}
+          onCancel={() => setCropDraft(null)}
+          onUse={(nextAvatar) => {
+            setAvatar(nextAvatar);
+            setCropDraft(null);
+          }}
+          sourceBlob={cropDraft.sourceBlob}
+        />
+      )}
     </div>
   );
 }
