@@ -1,8 +1,10 @@
 .auth-page {
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
   place-items: center;
-  padding: clamp(var(--space-4), 5vw, var(--space-12));
+  padding: max(clamp(var(--space-4), 5vw, var(--space-12)), env(safe-area-inset-top))
+    clamp(var(--space-4), 5vw, var(--space-12))
+    max(clamp(var(--space-4), 5vw, var(--space-12)), env(safe-area-inset-bottom));
   background:
     radial-gradient(circle at 14% 18%, rgb(232 121 74 / 13%), transparent 28rem),
     radial-gradient(circle at 85% 82%, rgb(23 59 69 / 10%), transparent 32rem),
@@ -130,7 +132,8 @@
 @media (max-width: 430px) {
   .auth-page {
     align-items: start;
-    padding: var(--space-3);
+    padding: max(var(--space-3), env(safe-area-inset-top)) var(--space-3)
+      max(var(--space-3), env(safe-area-inset-bottom));
   }
 
   .auth-card {

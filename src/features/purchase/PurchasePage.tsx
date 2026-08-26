@@ -395,6 +395,7 @@ export function PurchasePage() {
               <strong>{formatCurrencyFromCents(getPurchaseSubtotal(activeSession.items))}</strong>
             </div>
             <Button
+              className="purchase-actions__complete"
               disabled={activeSession.items.length === 0}
               onClick={() => setConfirmation('complete')}
             >

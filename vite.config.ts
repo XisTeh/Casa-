@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/casae-mark.svg', 'favicon.svg'],
+      includeAssets: ['apple-touch-icon.png'],
       manifest: {
         id: '/',
         name: 'Casaê',
@@ -24,15 +24,21 @@ export default defineConfig({
         categories: ['lifestyle', 'productivity'],
         icons: [
           {
-            src: '/icons/casae-mark.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: '/icons/casae-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/casae-maskable.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: '/icons/casae-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/icons/casae-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'maskable',
           },
         ],

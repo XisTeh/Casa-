@@ -385,7 +385,8 @@
   display: grid;
   overflow-y: auto;
   inset: 0;
-  padding: max(var(--space-5), env(safe-area-inset-top)) var(--space-5);
+  padding: max(var(--space-5), env(safe-area-inset-top)) var(--space-5)
+    max(var(--space-5), env(safe-area-inset-bottom));
   place-items: center;
   background: rgb(11 40 47 / 38%);
   backdrop-filter: blur(8px);
@@ -413,6 +414,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-6);
+  flex: 0 0 auto;
   margin-bottom: var(--space-5);
 }
 
@@ -438,6 +440,12 @@
   background: var(--surface-subtle);
 }
 
+.shopping-dialog > form {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .shopping-form {
   display: grid;
   min-height: 0;
@@ -445,6 +453,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 0.2rem;
   scroll-padding-block: var(--space-3) 6rem;
 }
@@ -573,6 +582,7 @@
   gap: var(--space-3);
   margin-top: 0;
   padding-top: var(--space-3);
+  padding-bottom: max(var(--space-1), env(safe-area-inset-bottom));
   background: linear-gradient(to bottom, transparent, var(--surface-glass-strong) 26%);
 }
 
@@ -779,12 +789,12 @@
   }
 
   .shopping-dialog-backdrop {
-    padding: var(--space-3);
+    padding: max(var(--space-3), env(safe-area-inset-top)) var(--space-3) 0;
     place-items: end center;
   }
 
   .shopping-dialog {
-    max-height: calc(100dvh - var(--space-6));
+    max-height: calc(100dvh - max(var(--space-3), env(safe-area-inset-top)));
     padding: var(--space-6);
     border-radius: 27px 22px 0 0;
   }
@@ -801,7 +811,11 @@
   }
 
   .shopping-dialog__footer {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
   }
 
   .shopping-dialog__footer .button {
@@ -815,5 +829,19 @@
     left: var(--space-4);
     max-width: none;
     text-align: center;
+  }
+}
+
+@media (max-width: 430px) {
+  .shopping-dialog {
+    padding: var(--space-5);
+  }
+
+  .shopping-dialog__footer {
+    grid-template-columns: 1fr;
+  }
+
+  .shopping-dialog__footer .button {
+    width: 100%;
   }
 }

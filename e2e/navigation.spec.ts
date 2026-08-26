@@ -29,7 +29,9 @@ test('preserva o layout nos breakpoints críticos sem overflow horizontal', asyn
   const viewports = [
     { width: 320, height: 720 },
     { width: 360, height: 800 },
+    { width: 375, height: 812 },
     { width: 390, height: 844 },
+    { width: 412, height: 915 },
     { width: 430, height: 932 },
     { width: 768, height: 900 },
     { width: 1280, height: 720 },
@@ -95,6 +97,76 @@ test('preserva o layout nos breakpoints críticos sem overflow horizontal', asyn
       }
     }
   }
+});
+
+test('mantém botões, campos e formulário longo corretos em 320px', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes('mobile'), 'Regressão visual específica de mobile.');
+  await page.setViewportSize({ width: 320, height: 720 });
+
+  await page.goto('/configuracoes');
+  const addMember = page.getByRole('button', { name: 'Adicionar membro' });
+  const buttonLayout = await addMember.evaluate((button) => {
+    const label = button.querySelector('.button__label')!;
+    const icon = label.querySelector('svg')!;
+    const labelBounds = label.getBoundingClientRect();
+    const iconBounds = icon.getBoundingClientRect();
+    return {
+      direction: getComputedStyle(label).flexDirection,
+      iconShrink: getComputedStyle(icon).flexShrink,
+      whiteSpace: getComputedStyle(label).whiteSpace,
+      centers: Math.abs(
+        iconBounds.top + iconBounds.height / 2 - (labelBounds.top + labelBounds.height / 2),
+      ),
+    };
+  });
+  expect(buttonLayout).toMatchObject({ direction: 'row', iconShrink: '0', whiteSpace: 'nowrap' });
+  expect(buttonLayout.centers).toBeLessThan(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    await page.evaluate(() => document.documentElement.clientWidth),
+  );
+
+  await page.goto('/produtos');
+  await page.getByRole('button', { name: 'Adicionar produto' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Adicionar produto' });
+  const productInput = dialog.getByLabel(/^Produto/);
+  await expect(productInput).toBeFocused();
+  const controlStyle = await productInput.evaluate((input) => ({
+    borderRadius: getComputedStyle(input).borderRadius,
+    outline: getComputedStyle(input).outlineStyle,
+    shadow: getComputedStyle(input).boxShadow,
+  }));
+  expect(controlStyle.borderRadius).not.toBe('0px');
+  expect(controlStyle.outline).toBe('none');
+  expect(controlStyle.shadow).not.toBe('none');
+
+  const form = dialog.locator('.shopping-form');
+  const initialDialogLayout = await dialog.evaluate((element) => {
+    const footer = element.querySelector('.shopping-dialog__footer')!;
+    const lastField = element.querySelector('.product-recurrence-field')!;
+    const footerBounds = footer.getBoundingClientRect();
+    const fieldBounds = lastField.getBoundingClientRect();
+    return {
+      footerPosition: getComputedStyle(footer).position,
+      overlap: Math.max(0, fieldBounds.bottom - footerBounds.top),
+    };
+  });
+  expect(initialDialogLayout).toEqual({ footerPosition: 'static', overlap: 0 });
+
+  await form.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+  const footer = dialog.locator('.shopping-dialog__footer');
+  await expect(footer.getByRole('button', { name: 'Cancelar' })).toBeVisible();
+  await expect(footer.getByRole('button', { name: 'Adicionar produto' })).toBeVisible();
+  const footerLayout = await footer.evaluate((element) => {
+    const actions = [...element.querySelectorAll<HTMLElement>('.button')];
+    return actions.map((action) => ({
+      width: action.getBoundingClientRect().width,
+      whiteSpace: getComputedStyle(action).whiteSpace,
+    }));
+  });
+  expect(footerLayout).toHaveLength(2);
+  expect(footerLayout.every((action) => action.width > 200 && action.whiteSpace === 'nowrap')).toBe(
+    true,
+  );
 });
 
 test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) => {
@@ -511,6 +583,13 @@ test('faz compra rápida com três produtos em 320px', async ({ page }, testInfo
   await page.getByLabel('Nome do novo mercado').fill('Mercado Express E2E');
   await page.getByRole('dialog').getByRole('button', { name: 'Começar compra rápida' }).click();
 
+  const finalizePurchase = page.getByRole('button', { name: 'Finalizar compra' });
+  await expect(finalizePurchase).toBeDisabled();
+  const disabledStyle = await finalizePurchase.evaluate((button) => ({
+    background: getComputedStyle(button).backgroundColor,
+    opacity: getComputedStyle(button).opacity,
+  }));
+
   const addProduct = async (name: string, quantity: string, price: string) => {
     const productInput = page.getByRole('textbox', { name: 'Produto' });
     const quantityInput = page.getByLabel('Quantidade do item rápido');
@@ -532,6 +611,22 @@ test('faz compra rápida com três produtos em 320px', async ({ page }, testInfo
 
   await expect(page.getByText('R$ 36,48').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Editar Coca-Cola 2L' })).toBeVisible();
+  await expect(finalizePurchase).toBeEnabled();
+  const enabledStyle = await finalizePurchase.evaluate((button) => ({
+    background: getComputedStyle(button).backgroundColor,
+    opacity: getComputedStyle(button).opacity,
+  }));
+  expect(enabledStyle.background).not.toBe(disabledStyle.background);
+  expect(Number(enabledStyle.opacity)).toBeGreaterThan(Number(disabledStyle.opacity));
+  await finalizePurchase.scrollIntoViewIfNeeded();
+  const collision = await page.evaluate(() => {
+    const cta = document.querySelector<HTMLElement>('.purchase-actions__complete')!;
+    const navigation = document.querySelector<HTMLElement>('.bottom-nav')!;
+    const ctaBounds = cta.getBoundingClientRect();
+    const navigationBounds = navigation.getBoundingClientRect();
+    return Math.max(0, ctaBounds.bottom - navigationBounds.top);
+  });
+  expect(collision).toBe(0);
   const layout = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
@@ -540,7 +635,7 @@ test('faz compra rápida com três produtos em 320px', async ({ page }, testInfo
   expect(layout.scrollWidth).toBe(layout.clientWidth);
   expect(layout.productFocused).toBe(true);
 
-  await page.getByRole('button', { name: 'Finalizar compra' }).click();
+  await finalizePurchase.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Finalizar compra' }).click();
   await expect(page.getByText(/finalizada com sucesso/i)).toBeVisible();
   await page.goto('/historico');

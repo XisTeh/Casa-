@@ -88,6 +88,7 @@
   min-height: var(--control-height);
   align-items: center;
   justify-content: center;
+  flex-direction: row;
   gap: var(--space-2);
   padding: 0 var(--space-5);
   border: 1px solid transparent;
@@ -95,6 +96,8 @@
   font-weight: var(--font-weight-bold);
   cursor: pointer;
   overflow: hidden;
+  line-height: 1.2;
+  white-space: nowrap;
   box-shadow: none;
   transition:
     border-color var(--transition-fast),
@@ -102,6 +105,27 @@
     color var(--transition-fast),
     box-shadow var(--transition-fast),
     transform var(--transition-fast);
+}
+
+.button > svg,
+.button__spinner {
+  flex: 0 0 auto;
+}
+
+.button__label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button__label > svg {
+  flex: 0 0 auto;
 }
 
 .button::after {
@@ -129,11 +153,6 @@
 .button:active:not(:disabled) {
   box-shadow: none;
   transform: translateY(0);
-}
-
-.button:disabled {
-  opacity: 0.48;
-  cursor: not-allowed;
 }
 
 .button--primary {
@@ -173,6 +192,91 @@
 .button--ghost:hover:not(:disabled) {
   background: var(--surface-subtle);
   box-shadow: none;
+}
+
+.button--danger,
+.shopping-button--danger {
+  color: var(--color-white);
+  background: var(--color-red-700);
+}
+
+.button--danger:hover:not(:disabled),
+.shopping-button--danger:hover:not(:disabled) {
+  background: #873232;
+}
+
+.button:disabled {
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+  box-shadow: none;
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+:where(
+  .store-card__actions button,
+  .history-tabs button,
+  .purchase-cart-item__end button,
+  .household-menu__actions button,
+  .household-menu__actions a,
+  .household-menu__choices button
+) {
+  align-items: center;
+  flex-direction: row;
+  white-space: nowrap;
+}
+
+:where(
+    .store-card__actions button,
+    .history-tabs button,
+    .purchase-cart-item__end button,
+    .household-menu__actions button,
+    .household-menu__actions a,
+    .household-menu__choices button
+  )
+  > svg {
+  flex: 0 0 auto;
+}
+
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea
+) {
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  outline: 0;
+  color: var(--text-primary);
+  background-color: var(--surface-raised);
+  box-shadow: none;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea
+):focus-visible {
+  border-color: rgb(232 121 74 / 58%);
+  outline: 0;
+  box-shadow: 0 0 0 4px rgb(232 121 74 / 12%);
+}
+
+:where(input, select, textarea)[aria-invalid='true'] {
+  border-color: rgb(162 61 61 / 58%);
+  box-shadow: 0 0 0 4px rgb(162 61 61 / 10%);
+}
+
+:where(input, select, textarea):disabled {
+  color: var(--text-muted);
+  background-color: var(--surface-subtle);
+  opacity: 0.72;
+  cursor: not-allowed;
 }
 
 .button__spinner,

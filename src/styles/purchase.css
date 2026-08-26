@@ -760,6 +760,16 @@
   backdrop-filter: blur(18px);
 }
 
+.purchase-actions .purchase-actions__complete:not(:disabled) {
+  color: var(--color-white);
+  background: var(--color-terracotta-600);
+  box-shadow: 0 10px 24px rgb(213 99 54 / 24%);
+}
+
+.purchase-actions .purchase-actions__complete:hover:not(:disabled) {
+  background: var(--color-terracotta-700);
+}
+
 .purchase-actions > div {
   display: grid;
   justify-items: end;
@@ -1177,9 +1187,9 @@
   }
 
   .purchase-actions {
-    position: sticky;
-    z-index: 10;
-    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    position: relative;
+    z-index: 1;
+    bottom: auto;
     align-items: stretch;
     flex-direction: column;
     gap: var(--space-3);
