@@ -137,6 +137,17 @@ p {
   text-transform: uppercase;
 }
 
+@media (max-width: 768px) {
+  :where(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+    select,
+    textarea
+  ) {
+    /* iOS Safari amplia a pagina ao focar controles editaveis menores que 16px. */
+    font-size: 16px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -219,6 +219,85 @@ test('preserva o layout nos breakpoints críticos sem overflow horizontal', asyn
   }
 });
 
+test('mantém controles editáveis em 16px no mobile sem overflow horizontal', async ({ page }) => {
+  const widths = [320, 360, 375, 390, 393, 412, 430];
+  const assertMobileControls = async (rootSelector = 'body') => {
+    const layout = await page.locator(rootSelector).evaluate((element) => {
+      const editableControls = [
+        ...element.querySelectorAll<HTMLElement>(
+          "input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), select, textarea",
+        ),
+      ].filter((control) => {
+        const style = getComputedStyle(control);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      });
+
+      return {
+        documentFits: document.documentElement.scrollWidth <= window.innerWidth,
+        dialogFits: element.scrollWidth <= element.clientWidth,
+        fontSizes: editableControls.map((control) =>
+          Number.parseFloat(getComputedStyle(control).fontSize),
+        ),
+      };
+    });
+
+    expect(layout.documentFits).toBe(true);
+    expect(layout.dialogFits).toBe(true);
+    expect(layout.fontSizes.length).toBeGreaterThan(0);
+    expect(layout.fontSizes.every((fontSize) => fontSize >= 16)).toBe(true);
+  };
+
+  for (const route of ['/lista', '/produtos']) {
+    await page.goto(route);
+    await page.locator('.app-shell').waitFor({ state: 'visible' });
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 844 });
+      await assertMobileControls();
+    }
+  }
+
+  await page.goto('/configuracoes');
+  await page.getByRole('button', { name: 'Editar perfil' }).click();
+  const profileDialog = page.getByRole('dialog', { name: 'Editar perfil' });
+  await expect(profileDialog).toBeVisible();
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 });
+    await assertMobileControls('[role="dialog"]');
+  }
+
+  await page.goto('/comprar');
+  await page.getByRole('button', { name: 'Começar compra rápida' }).click();
+  const purchaseDialog = page.getByRole('dialog', { name: 'Onde você está comprando?' });
+  await expect(purchaseDialog).toBeVisible();
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 });
+    await assertMobileControls('[role="dialog"]');
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const newStoreName = purchaseDialog.getByLabel('Nome do novo mercado');
+  if (await newStoreName.isVisible()) await newStoreName.fill('Mercado teste mobile');
+  await purchaseDialog.getByRole('button', { name: 'Começar compra rápida' }).click();
+  await expect(page.getByRole('heading', { name: 'Adicionar item' })).toBeVisible();
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 });
+    await assertMobileControls('.quick-purchase-form');
+  }
+
+  for (const label of [
+    'Produto',
+    'Quantidade do item rápido',
+    'Unidade do item rápido',
+    'Preço unitário do item rápido',
+  ]) {
+    const control = page.getByLabel(label, { exact: true });
+    await expect(control).toBeVisible();
+    expect(
+      await control.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+    ).toBe(16);
+  }
+});
+
 test('preserva integralmente a ação de criar categoria nos breakpoints críticos', async ({
   page,
 }) => {
