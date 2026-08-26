@@ -1,6 +1,6 @@
 import type { ShoppingCategory, ShoppingPriority, ShoppingUnit } from './shopping-list';
 
-export const PURCHASE_SESSION_STATUSES = ['active', 'completed'] as const;
+export const PURCHASE_SESSION_STATUSES = ['active', 'completed', 'cancelled'] as const;
 export const PURCHASE_ENTRY_MODES = ['list', 'quick'] as const;
 export const PURCHASE_ITEM_ORIGINS = ['shopping-list', 'manual'] as const;
 
@@ -21,6 +21,8 @@ export type ManualPurchaseItemInput = {
 
 export type PurchaseItem = {
   id: string;
+  /** UUID remoto; IDs locais legados continuam estáveis. */
+  syncId?: string;
   houseId: string;
   purchaseSessionId: string;
   origin?: PurchaseItemOrigin;
@@ -42,10 +44,15 @@ export type PurchaseItem = {
   purchasedById?: string;
   purchasedByNameSnapshot: string;
   purchasedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string;
 };
 
 export type PurchaseSession = {
   id: string;
+  /** UUID remoto; IDs locais legados continuam estáveis. */
+  syncId?: string;
   houseId: string;
   storeId?: string;
   storeNameSnapshot: string;
@@ -53,9 +60,12 @@ export type PurchaseSession = {
   status: PurchaseSessionStatus;
   startedAt: string;
   completedAt?: string;
+  cancelledAt?: string;
   purchasedById?: string;
   purchasedByNameSnapshot: string;
   totalPriceCents: number;
+  updatedAt?: string;
+  deletedAt?: string;
   items: PurchaseItem[];
 };
 

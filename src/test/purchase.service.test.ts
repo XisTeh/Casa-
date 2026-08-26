@@ -16,7 +16,12 @@ async function createServices(label: string) {
   const shoppingRepository = new LocalShoppingRepository(database);
   const shoppingListService = new ShoppingListService(shoppingRepository);
   const purchaseRepository = new LocalPurchaseRepository(database);
-  const purchaseService = new PurchaseService(purchaseRepository);
+  const purchaseService = new PurchaseService(
+    purchaseRepository,
+    undefined,
+    undefined,
+    shoppingListService,
+  );
   const items = await shoppingListService.list();
   return { items, purchaseRepository, purchaseService, shoppingListService };
 }

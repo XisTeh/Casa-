@@ -34,6 +34,7 @@ import { getShoppingListSummary, type ShoppingListItem } from '../../domain/shop
 import { useShoppingList } from '../shopping-list/ShoppingListContext';
 import { useStores } from '../stores/StoreContext';
 import { useProducts } from '../products/ProductContext';
+import { useHousehold } from '../house/HouseContext';
 import { PurchaseConfirmationDialog } from './PurchaseConfirmationDialog';
 import { usePurchase } from './PurchaseContext';
 import { PurchaseItemDialog } from './PurchaseItemDialog';
@@ -41,23 +42,29 @@ import { QuickPurchaseItemForm } from './QuickPurchaseItemForm';
 import { StartPurchaseDialog } from './StartPurchaseDialog';
 
 export function PurchasePage() {
+  const { activeMember } = useHousehold();
   const { error: shoppingListError, isLoading: isLoadingList, items } = useShoppingList();
   const { activeStores, createStore, error: storesError, isLoading: isLoadingStores } = useStores();
   const { products: catalogProducts, categories, refreshProducts } = useProducts();
   const {
     activeSession,
+    activeSessions,
     addManualItem,
     cancelPurchase,
     completePurchase,
     completedSessions,
     error: purchaseError,
     isLoading: isLoadingPurchase,
+    isOwner,
     latestCompletedSession,
     markPurchased,
     removePurchaseItem,
+    leavePurchase,
     startPurchase,
     undoPurchasedItem,
     updateManualItem,
+    watchPurchase,
+    syncStatus,
   } = usePurchase();
   const [startMode, setStartMode] = useState<PurchaseEntryMode | null>(null);
   const [selectedItem, setSelectedItem] = useState<ShoppingListItem | null>(null);
@@ -143,7 +150,7 @@ export function PurchasePage() {
 
   async function handleStart(store: { id: string; name: string }) {
     const mode = startMode ?? 'list';
-    await startPurchase(store, mode);
+    await startPurchase(store, mode, activeSessions.length > 0);
     setShowQuickForm(mode === 'quick');
     setFeedback(
       mode === 'quick'
@@ -210,18 +217,52 @@ export function PurchasePage() {
         <>
           <PageHeader
             accessory={
-              <Button onClick={() => setConfirmation('cancel')} variant="ghost">
-                Cancelar compra
-              </Button>
+              isOwner && activeSession.status === 'active' ? (
+                <Button onClick={() => setConfirmation('cancel')} variant="ghost">
+                  Cancelar compra
+                </Button>
+              ) : (
+                <Button onClick={leavePurchase} variant="ghost">
+                  Sair desta compra
+                </Button>
+              )
             }
-            description={`Iniciada em ${formatDateTime(activeSession.startedAt)}`}
-            eyebrow="Comprando"
-            title={activeSession.storeNameSnapshot}
+            description={`${activeSession.storeNameSnapshot} · iniciada em ${formatDateTime(activeSession.startedAt)}`}
+            eyebrow={isOwner ? 'Comprando' : 'Acompanhando em tempo real'}
+            title={
+              isOwner
+                ? activeSession.storeNameSnapshot
+                : `Compra de ${activeSession.purchasedByNameSnapshot}`
+            }
           />
+          {!isOwner && (
+            <section className="purchase-watcher-banner" role="status">
+              <strong>
+                {activeSession.status === 'completed'
+                  ? `Compra finalizada por ${activeSession.purchasedByNameSnapshot}`
+                  : activeSession.status === 'cancelled'
+                    ? `Compra cancelada por ${activeSession.purchasedByNameSnapshot}`
+                    : `Compra de ${activeSession.purchasedByNameSnapshot}`}
+              </strong>
+              <span>
+                {syncStatus.state === 'offline'
+                  ? 'Offline · mostrando o último estado sincronizado'
+                  : activeSession.status === 'active'
+                    ? 'Somente leitura · atualiza automaticamente'
+                    : 'Esta compra foi encerrada.'}
+              </span>
+            </section>
+          )}
           <section aria-label="Resumo da compra" className="purchase-live-summary">
             <div>
-              <span>{usesShoppingList ? 'Faltando' : 'Modo'}</span>
-              <strong>{usesShoppingList ? visiblePendingItems.length : 'Rápida'}</strong>
+              <span>{isOwner && usesShoppingList ? 'Faltando' : 'Modo'}</span>
+              <strong>
+                {isOwner && usesShoppingList
+                  ? visiblePendingItems.length
+                  : activeSession.entryMode === 'quick'
+                    ? 'Rápida'
+                    : 'Lista'}
+              </strong>
             </div>
             <div>
               <span>No carrinho</span>
@@ -233,37 +274,39 @@ export function PurchasePage() {
             </div>
           </section>
 
-          <section className="quick-purchase-entry" aria-label="Adicionar item à compra">
-            {showQuickForm || !usesShoppingList || editingManualItem ? (
-              <QuickPurchaseItemForm
-                editingItem={editingManualItem}
-                key={editingManualItem?.id ?? 'new-manual-item'}
-                knownProducts={knownProducts}
-                onCancelEdit={() => setEditingManualItem(null)}
-                onCreate={handleAddManual}
-                onUpdate={handleUpdateManual}
-              />
-            ) : (
-              <button
-                className="quick-purchase-entry__open"
-                onClick={() => setShowQuickForm(true)}
-                type="button"
-              >
-                <span>
-                  <Plus aria-hidden="true" size={21} />
-                </span>
-                <span>
-                  <strong>Adicionar item</strong>
-                  <small>Inclua um produto inesperado sem sair da compra.</small>
-                </span>
-              </button>
-            )}
-          </section>
+          {isOwner && activeSession.status === 'active' && (
+            <section className="quick-purchase-entry" aria-label="Adicionar item à compra">
+              {showQuickForm || !usesShoppingList || editingManualItem ? (
+                <QuickPurchaseItemForm
+                  editingItem={editingManualItem}
+                  key={editingManualItem?.id ?? 'new-manual-item'}
+                  knownProducts={knownProducts}
+                  onCancelEdit={() => setEditingManualItem(null)}
+                  onCreate={handleAddManual}
+                  onUpdate={handleUpdateManual}
+                />
+              ) : (
+                <button
+                  className="quick-purchase-entry__open"
+                  onClick={() => setShowQuickForm(true)}
+                  type="button"
+                >
+                  <span>
+                    <Plus aria-hidden="true" size={21} />
+                  </span>
+                  <span>
+                    <strong>Adicionar item</strong>
+                    <small>Inclua um produto inesperado sem sair da compra.</small>
+                  </span>
+                </button>
+              )}
+            </section>
+          )}
 
           <div
             className={`purchase-active-layout ${usesShoppingList ? '' : 'purchase-active-layout--quick'}`}
           >
-            {usesShoppingList && (
+            {isOwner && activeSession.status === 'active' && usesShoppingList && (
               <section className="purchase-pending" aria-labelledby="purchase-pending-title">
                 <header className="purchase-section-header">
                   <span>
@@ -348,35 +391,37 @@ export function PurchasePage() {
                       </div>
                       <div className="purchase-cart-item__end">
                         <strong>{formatCurrencyFromCents(item.totalPriceCents)}</strong>
-                        {isShoppingListPurchaseItem(item) ? (
-                          <button
-                            aria-label={`Desfazer ${item.productNameSnapshot}`}
-                            onClick={() => void handleUndo(item)}
-                            type="button"
-                          >
-                            <RotateCcw aria-hidden="true" size={14} /> Desfazer
-                          </button>
-                        ) : (
-                          <span className="purchase-cart-item__manual-actions">
+                        {isOwner &&
+                          activeSession.status === 'active' &&
+                          (isShoppingListPurchaseItem(item) ? (
                             <button
-                              aria-label={`Editar ${item.productNameSnapshot}`}
-                              onClick={() => {
-                                setEditingManualItem(item);
-                                setShowQuickForm(true);
-                              }}
+                              aria-label={`Desfazer ${item.productNameSnapshot}`}
+                              onClick={() => void handleUndo(item)}
                               type="button"
                             >
-                              <Pencil aria-hidden="true" size={14} /> Editar
+                              <RotateCcw aria-hidden="true" size={14} /> Desfazer
                             </button>
-                            <button
-                              aria-label={`Remover ${item.productNameSnapshot}`}
-                              onClick={() => void handleRemoveManual(item)}
-                              type="button"
-                            >
-                              <Trash2 aria-hidden="true" size={14} /> Remover
-                            </button>
-                          </span>
-                        )}
+                          ) : (
+                            <span className="purchase-cart-item__manual-actions">
+                              <button
+                                aria-label={`Editar ${item.productNameSnapshot}`}
+                                onClick={() => {
+                                  setEditingManualItem(item);
+                                  setShowQuickForm(true);
+                                }}
+                                type="button"
+                              >
+                                <Pencil aria-hidden="true" size={14} /> Editar
+                              </button>
+                              <button
+                                aria-label={`Remover ${item.productNameSnapshot}`}
+                                onClick={() => void handleRemoveManual(item)}
+                                type="button"
+                              >
+                                <Trash2 aria-hidden="true" size={14} /> Remover
+                              </button>
+                            </span>
+                          ))}
                       </div>
                     </article>
                   ))}
@@ -388,19 +433,27 @@ export function PurchasePage() {
           <footer className="purchase-actions">
             <div>
               <span>
-                {usesShoppingList
-                  ? `${visiblePendingItems.length} ${visiblePendingItems.length === 1 ? 'item continuará' : 'itens continuarão'} na Lista`
-                  : 'Sua Lista não será alterada'}
+                {!isOwner
+                  ? 'Acompanhando em tempo real'
+                  : usesShoppingList
+                    ? `${visiblePendingItems.length} ${visiblePendingItems.length === 1 ? 'item continuará' : 'itens continuarão'} na Lista`
+                    : 'Sua Lista não será alterada'}
               </span>
               <strong>{formatCurrencyFromCents(getPurchaseSubtotal(activeSession.items))}</strong>
             </div>
-            <Button
-              className="purchase-actions__complete"
-              disabled={activeSession.items.length === 0}
-              onClick={() => setConfirmation('complete')}
-            >
-              Finalizar compra
-            </Button>
+            {isOwner && activeSession.status === 'active' ? (
+              <Button
+                className="purchase-actions__complete"
+                disabled={activeSession.items.length === 0}
+                onClick={() => setConfirmation('complete')}
+              >
+                Finalizar compra
+              </Button>
+            ) : (
+              <Button onClick={leavePurchase} variant="secondary">
+                Sair desta compra
+              </Button>
+            )}
           </footer>
         </>
       ) : (
@@ -410,6 +463,47 @@ export function PurchasePage() {
             eyebrow="Compras"
             title="Hora de ir às compras."
           />
+          {activeSessions.length > 0 && (
+            <section aria-labelledby="active-purchases-title" className="purchase-ongoing">
+              <header>
+                <div>
+                  <p className="eyebrow">Ao vivo</p>
+                  <h2 id="active-purchases-title">Compras em andamento</h2>
+                </div>
+                <strong>{activeSessions.length}</strong>
+              </header>
+              <div className="purchase-ongoing__list">
+                {activeSessions.map((session) => {
+                  const mine = session.purchasedById === activeMember.id;
+                  return (
+                    <article className="purchase-ongoing-card" key={session.id}>
+                      <span className="purchase-ongoing-card__avatar">
+                        {session.purchasedByNameSnapshot
+                          .trim()
+                          .charAt(0)
+                          .toLocaleUpperCase('pt-BR')}
+                      </span>
+                      <div>
+                        <strong>{session.purchasedByNameSnapshot}</strong>
+                        <span>
+                          {session.storeNameSnapshot} ·{' '}
+                          {session.entryMode === 'quick' ? 'Compra rápida' : 'Usando a Lista'}
+                        </span>
+                        <small>
+                          {session.items.length} {session.items.length === 1 ? 'item' : 'itens'} ·{' '}
+                          {formatCurrencyFromCents(getPurchaseSubtotal(session.items))} ·{' '}
+                          {formatDateTime(session.startedAt)}
+                        </small>
+                      </div>
+                      <Button onClick={() => void watchPurchase(session.id)} variant="secondary">
+                        {mine ? 'Continuar compra' : 'Acompanhar'}
+                      </Button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <section className="purchase-start-surface">
             <div className="purchase-start-surface__main">
               <span className="purchase-start-surface__icon">
@@ -503,7 +597,7 @@ export function PurchasePage() {
           onSubmit={(quantity, price) => handleMarkPurchased(selectedItem, quantity, price)}
         />
       )}
-      {activeSession && confirmation && (
+      {activeSession && isOwner && activeSession.status === 'active' && confirmation && (
         <PurchaseConfirmationDialog
           mode={confirmation}
           onClose={() => setConfirmation(null)}

@@ -180,6 +180,7 @@ export function QuickPurchaseItemForm({
             <input
               aria-autocomplete="list"
               aria-controls="quick-product-suggestions"
+              autoFocus
               autoComplete="off"
               onChange={(event) => {
                 setProductName(event.target.value);

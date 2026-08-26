@@ -7,6 +7,7 @@ import {
 } from '../../domain/catalog';
 import type { AvatarCrop } from '../../domain/profile-avatar';
 import type { CatalogSyncOutboxEntry } from '../../domain/catalog-sync';
+import type { PurchaseSyncOutboxEntry } from '../../domain/purchase-sync';
 import {
   HOUSE_ID,
   initialShoppingListSeed,
@@ -83,7 +84,10 @@ export type CasaeMemoryDatabase = {
   houseMembers: Map<string, HouseMember>;
   profileAvatars: Map<string, LocalProfileAvatar>;
   metadata: Map<string, LocalMetadata>;
-  syncOutbox: Map<string, ShoppingSyncOutboxEntry | CatalogSyncOutboxEntry>;
+  syncOutbox: Map<
+    string,
+    ShoppingSyncOutboxEntry | CatalogSyncOutboxEntry | PurchaseSyncOutboxEntry
+  >;
 };
 
 export type LegacyDatabaseSnapshot = {

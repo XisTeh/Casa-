@@ -20,7 +20,7 @@ function createServices() {
   const purchaseRepository = new LocalPurchaseRepository(database);
   const purchaseService = new PurchaseService(purchaseRepository);
   const storeService = new StoreService(new LocalStoreRepository(database), purchaseRepository);
-  return { purchaseService, shoppingListService, storeService };
+  return { purchaseRepository, purchaseService, shoppingListService, storeService };
 }
 
 describe('PurchasePage', () => {
@@ -150,5 +150,64 @@ describe('PurchasePage', () => {
     await user.click(screen.getByRole('button', { name: 'Remover Coca-Cola 2L' }));
     expect(await screen.findByText('O carrinho ainda está vazio.')).toBeInTheDocument();
     expect(await services.shoppingListService.list()).toEqual([]);
+  });
+
+  it('exibe compra de outro membro em modo somente leitura', async () => {
+    const user = userEvent.setup();
+    const services = createServices();
+    const now = '2026-08-26T12:00:00.000Z';
+    const session = await services.purchaseRepository.createSession({
+      id: crypto.randomUUID(),
+      houseId: 'house-raabe-sidney',
+      storeNameSnapshot: 'Mercado ao vivo',
+      entryMode: 'quick',
+      status: 'active',
+      startedAt: now,
+      purchasedById: 'member-ronnan',
+      purchasedByNameSnapshot: 'Ronnan',
+      totalPriceCents: 0,
+      updatedAt: now,
+    });
+    await services.purchaseRepository.savePurchasedItem('house-raabe-sidney', {
+      id: crypto.randomUUID(),
+      houseId: 'house-raabe-sidney',
+      purchaseSessionId: session.id,
+      origin: 'manual',
+      productNameSnapshot: 'Café',
+      brandSnapshot: '',
+      categorySnapshot: 'mercearia',
+      prioritySnapshot: 'normal',
+      notesSnapshot: '',
+      plannedQuantity: 1,
+      purchasedQuantity: 1,
+      unitSnapshot: 'pacote',
+      unitPriceCents: 2190,
+      totalPriceCents: 2190,
+      storeNameSnapshot: 'Mercado ao vivo',
+      purchasedById: 'member-ronnan',
+      purchasedByNameSnapshot: 'Ronnan',
+      purchasedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    render(<App {...services} />);
+    expect(
+      await screen.findByRole('heading', { name: 'Compras em andamento' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Acompanhar' }));
+
+    expect(await screen.findByRole('heading', { name: 'Compra de Ronnan' })).toBeInTheDocument();
+    expect(screen.getByText(/somente leitura/i)).toBeInTheDocument();
+    expect(screen.getByText('Café')).toBeInTheDocument();
+    expect(screen.getAllByText('R$ 21,90').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Finalizar compra' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancelar compra' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Editar Café' })).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: 'Sair desta compra' })[0]!);
+    expect(
+      await screen.findByRole('heading', { name: 'Compras em andamento' }),
+    ).toBeInTheDocument();
   });
 });

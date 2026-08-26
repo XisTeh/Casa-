@@ -22,6 +22,8 @@ import { OfflineFirstShoppingRepository } from '../infrastructure/shopping/Offli
 import { SupabaseShoppingRepository } from '../infrastructure/supabase/SupabaseShoppingRepository';
 import { SupabaseCatalogRepository } from '../infrastructure/supabase/SupabaseCatalogRepository';
 import { OfflineFirstCatalogSync } from '../infrastructure/catalog/OfflineFirstCatalogRepository';
+import { OfflineFirstPurchaseRepository } from '../infrastructure/purchase/OfflineFirstPurchaseRepository';
+import { SupabasePurchaseRepository } from '../infrastructure/supabase/SupabasePurchaseRepository';
 
 export const defaultLocalDatabase = new CasaeLocalDatabase();
 export const defaultHouseRepository = new LocalHouseRepository(defaultLocalDatabase);
@@ -43,6 +45,8 @@ export const defaultProductService = new ProductService(
 export const defaultPurchaseService = new PurchaseService(
   defaultPurchaseRepository,
   defaultProductService,
+  undefined,
+  defaultShoppingListService,
 );
 export const defaultStoreRepository = new LocalStoreRepository(defaultLocalDatabase);
 export const defaultStoreService = new StoreService(
@@ -81,17 +85,27 @@ export const createDefaultOnlineCatalogServices = (
     undefined,
     userId,
   );
+  const purchaseRepository = new OfflineFirstPurchaseRepository(
+    defaultLocalDatabase,
+    new SupabasePurchaseRepository(),
+    userId,
+  );
   const categoryService = new CategoryService(sync.categories, sync.products);
   const productService = new ProductService(
     sync.products,
     sync.categories,
-    defaultPurchaseRepository,
+    purchaseRepository,
     shoppingListService,
   );
   return {
     categoryService,
     productService,
-    storeService: new StoreService(sync.stores, defaultPurchaseRepository),
-    purchaseService: new PurchaseService(defaultPurchaseRepository, productService),
+    storeService: new StoreService(sync.stores, purchaseRepository),
+    purchaseService: new PurchaseService(
+      purchaseRepository,
+      productService,
+      userId,
+      shoppingListService,
+    ),
   };
 };

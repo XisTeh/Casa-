@@ -3,6 +3,7 @@ import foundation from '../../supabase/migrations/202608240001_foundation.sql?ra
 import onlineIdentity from '../../supabase/migrations/202608260001_online_identity.sql?raw';
 import shoppingSync from '../../supabase/migrations/202608260002_shopping_list_sync.sql?raw';
 import catalogSync from '../../supabase/migrations/202608260003_catalog_stores_sync.sql?raw';
+import purchaseLiveSync from '../../supabase/migrations/202608260004_purchase_live_sync.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -86,5 +87,23 @@ describe('migrations da fundação Supabase', () => {
     expect(catalogSync).toContain(
       'revoke all on function private.ensure_default_categories(uuid, uuid)',
     );
+  });
+
+  it('sincroniza compras compartilhadas com dono, histórico, RLS e Realtime', () => {
+    for (const table of ['purchase_sessions', 'purchase_items']) {
+      expect(purchaseLiveSync).toContain(`create table public.${table}`);
+      expect(purchaseLiveSync).toContain(`alter table public.${table} enable row level security`);
+      expect(purchaseLiveSync).toContain(
+        `alter publication supabase_realtime add table public.${table}`,
+      );
+    }
+    expect(purchaseLiveSync).toContain("status in ('active', 'completed', 'cancelled')");
+    expect(purchaseLiveSync).toContain('started_by = (select auth.uid())');
+    expect(purchaseLiveSync).toContain('session.started_by = auth.uid()');
+    expect(purchaseLiveSync).toContain('private.is_house_member(house_id)');
+    expect(purchaseLiveSync).toContain('on conflict (id) do update');
+    expect(purchaseLiveSync).toContain('excluded.updated_at > public.purchase_sessions.updated_at');
+    expect(purchaseLiveSync).toContain('excluded.updated_at > public.purchase_items.updated_at');
+    expect(purchaseLiveSync).not.toMatch(/delete from public\.purchase_(sessions|items)/);
   });
 });

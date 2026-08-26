@@ -29,6 +29,7 @@ import { useOptionalAuth } from '../auth/AuthContext';
 import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
 import { useShoppingList } from '../shopping-list/ShoppingListContext';
 import { useProducts } from '../products/ProductContext';
+import { usePurchase } from '../purchase/PurchaseContext';
 
 type DialogState =
   'edit-house' | 'create-house' | 'add-member' | 'edit-profile' | HouseMember | null;
@@ -39,6 +40,7 @@ export function SettingsPage() {
   const auth = useOptionalAuth();
   const { syncStatus } = useShoppingList();
   const { syncStatus: catalogSyncStatus } = useProducts();
+  const { syncStatus: purchaseSyncStatus } = usePurchase();
   const { houses, activeHouse, members, activeMember } = household;
   const [dialog, setDialog] = useState<DialogState>(null);
   const [removing, setRemoving] = useState<HouseMember | null>(null);
@@ -47,13 +49,19 @@ export function SettingsPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [joining, setJoining] = useState(false);
   const isOwner = activeMember.role === 'owner';
-  const totalPending = syncStatus.pending + catalogSyncStatus.pending;
+  const totalPending = syncStatus.pending + catalogSyncStatus.pending + purchaseSyncStatus.pending;
   const generalSyncState =
-    syncStatus.state === 'offline' || catalogSyncStatus.state === 'offline'
+    syncStatus.state === 'offline' ||
+    catalogSyncStatus.state === 'offline' ||
+    purchaseSyncStatus.state === 'offline'
       ? 'offline'
-      : syncStatus.state === 'error' || catalogSyncStatus.state === 'error'
+      : syncStatus.state === 'error' ||
+          catalogSyncStatus.state === 'error' ||
+          purchaseSyncStatus.state === 'error'
         ? 'error'
-        : syncStatus.state === 'syncing' || catalogSyncStatus.state === 'syncing'
+        : syncStatus.state === 'syncing' ||
+            catalogSyncStatus.state === 'syncing' ||
+            purchaseSyncStatus.state === 'syncing'
           ? 'syncing'
           : totalPending
             ? 'pending'

@@ -19,7 +19,12 @@ function cloneItem(item: PurchaseItem): PurchaseItem {
 }
 
 function cloneSession(session: PersistedPurchaseSession, items: PurchaseItem[]): PurchaseSession {
-  return { ...session, items: items.map(cloneItem) };
+  const clonedItems = items.map(cloneItem);
+  return {
+    ...session,
+    totalPriceCents: clonedItems.reduce((total, item) => total + item.totalPriceCents, 0),
+    items: clonedItems,
+  };
 }
 
 export class LocalPurchaseRepository implements PurchaseRepository {
@@ -37,12 +42,20 @@ export class LocalPurchaseRepository implements PurchaseRepository {
   }
 
   async getActiveSession(houseId: string): Promise<PurchaseSession | null> {
+    return (await this.listActiveSessions(houseId))[0] ?? null;
+  }
+
+  async getSession(houseId: string, sessionId: string): Promise<PurchaseSession | null> {
+    const session = await this.getPersistedSession(sessionId);
+    return session?.houseId === houseId && !session.deletedAt ? this.hydrateSession(session) : null;
+  }
+
+  async listActiveSessions(houseId: string): Promise<PurchaseSession[]> {
     await this.initialize();
-    const sessions = await this.listSessionsForHouse(houseId);
-    const activeSession = sessions
-      .filter((session) => session.status === 'active')
-      .sort((first, second) => second.startedAt.localeCompare(first.startedAt))[0];
-    return activeSession ? this.hydrateSession(activeSession) : null;
+    const sessions = (await this.listSessionsForHouse(houseId))
+      .filter((session) => session.status === 'active' && !session.deletedAt)
+      .sort((first, second) => second.startedAt.localeCompare(first.startedAt));
+    return Promise.all(sessions.map((session) => this.hydrateSession(session)));
   }
 
   async createSession(session: PersistedPurchaseSession): Promise<PurchaseSession> {
@@ -61,7 +74,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
   }
 
   async savePurchasedItem(houseId: string, item: PurchaseItem): Promise<PurchaseSession> {
-    const session = await this.getSession(item.purchaseSessionId);
+    const session = await this.getPersistedSession(item.purchaseSessionId);
     if (
       !session ||
       session.houseId !== houseId ||
@@ -86,7 +99,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     sessionId: string,
     purchaseItemId: string,
   ): Promise<PurchaseSession> {
-    const session = await this.getSession(sessionId);
+    const session = await this.getPersistedSession(sessionId);
     if (!session || session.houseId !== houseId || session.status !== 'active')
       throw new Error('Esta compra não está mais ativa.');
     const nativeDatabase = await this.database.getNativeDatabase();
@@ -116,7 +129,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     totalPriceCents: number,
     purchasedShoppingItemIds: string[],
   ): Promise<PurchaseSession> {
-    const session = await this.getSession(sessionId);
+    const session = await this.getPersistedSession(sessionId);
     if (!session || session.houseId !== houseId || session.status !== 'active')
       throw new Error('Esta compra não está mais ativa.');
     const completedSession: PersistedPurchaseSession = {
@@ -124,6 +137,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
       status: 'completed',
       completedAt,
       totalPriceCents,
+      updatedAt: completedAt,
     };
     const nativeDatabase = await this.database.getNativeDatabase();
 
@@ -135,7 +149,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
       });
     } else {
       const transaction = nativeDatabase.transaction(
-        [CASAE_STORES.purchaseSessions, CASAE_STORES.purchaseItems, CASAE_STORES.shoppingItems],
+        [CASAE_STORES.purchaseSessions, CASAE_STORES.shoppingItems],
         'readwrite',
       );
       transaction.objectStore(CASAE_STORES.purchaseSessions).put(completedSession);
@@ -143,9 +157,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
       const itemsToDelete = await Promise.all(
         purchasedShoppingItemIds.map((id) =>
           requestToPromise(
-            shoppingItems.get(id) as IDBRequest<
-              import('../../domain/shopping-list').ShoppingListItem | undefined
-            >,
+            shoppingItems.get(id) as IDBRequest<{ id: string; houseId: string } | undefined>,
           ),
         ),
       );
@@ -158,39 +170,38 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     return this.hydrateSession(completedSession);
   }
 
-  async cancelSession(houseId: string, sessionId: string): Promise<void> {
+  async cancelSession(
+    houseId: string,
+    sessionId: string,
+    cancelledAt = new Date().toISOString(),
+  ): Promise<PurchaseSession> {
     await this.initialize();
-    const session = await this.getSession(sessionId);
-    if (!session || session.houseId !== houseId)
+    const session = await this.getPersistedSession(sessionId);
+    if (!session || session.houseId !== houseId || session.status !== 'active')
       throw new Error('Esta compra não está mais ativa.');
+    const cancelledSession: PersistedPurchaseSession = {
+      ...session,
+      status: 'cancelled',
+      cancelledAt,
+      updatedAt: cancelledAt,
+    };
     const nativeDatabase = await this.database.getNativeDatabase();
 
     if (!nativeDatabase) {
-      const memory = this.database.getMemoryDatabase();
-      memory.purchaseSessions.delete(sessionId);
-      [...memory.purchaseItems.values()]
-        .filter((item) => item.houseId === houseId && item.purchaseSessionId === sessionId)
-        .forEach((item) => memory.purchaseItems.delete(item.id));
-      return;
+      this.database.getMemoryDatabase().purchaseSessions.set(sessionId, cancelledSession);
+      return this.hydrateSession(cancelledSession);
     }
 
-    const transaction = nativeDatabase.transaction(
-      [CASAE_STORES.purchaseSessions, CASAE_STORES.purchaseItems],
-      'readwrite',
-    );
-    transaction.objectStore(CASAE_STORES.purchaseSessions).delete(sessionId);
-    const itemsStore = transaction.objectStore(CASAE_STORES.purchaseItems);
-    const keys = await requestToPromise(
-      itemsStore.index('purchaseSessionId').getAllKeys(IDBKeyRange.only(sessionId)),
-    );
-    keys.forEach((key) => itemsStore.delete(key));
+    const transaction = nativeDatabase.transaction(CASAE_STORES.purchaseSessions, 'readwrite');
+    transaction.objectStore(CASAE_STORES.purchaseSessions).put(cancelledSession);
     await transactionToPromise(transaction);
+    return this.hydrateSession(cancelledSession);
   }
 
   async listCompletedSessions(houseId: string): Promise<PurchaseSession[]> {
     await this.initialize();
     const sessions = (await this.listSessionsForHouse(houseId))
-      .filter((session) => session.status === 'completed')
+      .filter((session) => session.status === 'completed' && !session.deletedAt)
       .sort((first, second) =>
         (second.completedAt ?? second.startedAt).localeCompare(
           first.completedAt ?? first.startedAt,
@@ -217,7 +228,51 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     return sessions.map((session) => ({ ...session }));
   }
 
-  private async getSession(id: string): Promise<PersistedPurchaseSession | undefined> {
+  async listPersistedSessions(houseId: string) {
+    return this.listSessionsForHouse(houseId);
+  }
+
+  async listPersistedItems(houseId: string) {
+    await this.initialize();
+    const native = await this.database.getNativeDatabase();
+    if (!native)
+      return [...this.database.getMemoryDatabase().purchaseItems.values()]
+        .filter((item) => item.houseId === houseId)
+        .map(cloneItem);
+    const transaction = native.transaction(CASAE_STORES.purchaseItems, 'readonly');
+    const items = await requestToPromise(
+      transaction
+        .objectStore(CASAE_STORES.purchaseItems)
+        .index('houseId')
+        .getAll(houseId) as IDBRequest<PurchaseItem[]>,
+    );
+    await transactionToPromise(transaction);
+    return items.map(cloneItem);
+  }
+
+  async putPersistedSession(session: PersistedPurchaseSession) {
+    await this.initialize();
+    const native = await this.database.getNativeDatabase();
+    if (!native) this.database.getMemoryDatabase().purchaseSessions.set(session.id, { ...session });
+    else {
+      const transaction = native.transaction(CASAE_STORES.purchaseSessions, 'readwrite');
+      transaction.objectStore(CASAE_STORES.purchaseSessions).put(session);
+      await transactionToPromise(transaction);
+    }
+  }
+
+  async putPersistedItem(item: PurchaseItem) {
+    await this.initialize();
+    const native = await this.database.getNativeDatabase();
+    if (!native) this.database.getMemoryDatabase().purchaseItems.set(item.id, cloneItem(item));
+    else {
+      const transaction = native.transaction(CASAE_STORES.purchaseItems, 'readwrite');
+      transaction.objectStore(CASAE_STORES.purchaseItems).put(item);
+      await transactionToPromise(transaction);
+    }
+  }
+
+  private async getPersistedSession(id: string): Promise<PersistedPurchaseSession | undefined> {
     await this.initialize();
     const nativeDatabase = await this.database.getNativeDatabase();
     if (!nativeDatabase) {
@@ -238,7 +293,12 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     const nativeDatabase = await this.database.getNativeDatabase();
     if (!nativeDatabase) {
       const items = [...this.database.getMemoryDatabase().purchaseItems.values()]
-        .filter((item) => item.houseId === session.houseId && item.purchaseSessionId === session.id)
+        .filter(
+          (item) =>
+            item.houseId === session.houseId &&
+            item.purchaseSessionId === session.id &&
+            !item.deletedAt,
+        )
         .sort((first, second) => first.purchasedAt.localeCompare(second.purchasedAt));
       return cloneSession(session, items);
     }
@@ -253,7 +313,7 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     return cloneSession(
       session,
       items
-        .filter((item) => item.houseId === session.houseId)
+        .filter((item) => item.houseId === session.houseId && !item.deletedAt)
         .sort((first, second) => first.purchasedAt.localeCompare(second.purchasedAt)),
     );
   }
