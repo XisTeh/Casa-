@@ -1,0 +1,879 @@
+.spending-page {
+  padding-bottom: var(--space-8);
+}
+
+.spending-month-picker {
+  display: grid;
+  width: min(100%, 25rem);
+  grid-template-columns: 46px minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  padding: 0.3rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+.spending-month-picker button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  color: var(--color-petrol-800);
+  background: transparent;
+  cursor: pointer;
+}
+
+.spending-month-picker button:hover {
+  background: var(--surface-petrol-subtle);
+}
+
+.spending-month-picker > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-petrol-950);
+}
+
+.spending-month-picker strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spending-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.spending-summary article {
+  display: grid;
+  min-width: 0;
+  min-height: 126px;
+  align-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: rgb(255 255 255 / 72%);
+  box-shadow: var(--shadow-xs);
+}
+
+.spending-summary article > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.spending-summary article > strong {
+  overflow-wrap: anywhere;
+  color: var(--color-petrol-950);
+  font-size: clamp(1.2rem, 2.2vw, 1.65rem);
+  letter-spacing: -0.04em;
+}
+
+.spending-summary article > small {
+  color: var(--text-muted);
+}
+
+.spending-summary article.is-negative > strong,
+.spending-summary article.is-negative > small {
+  color: var(--color-red-700);
+}
+
+.spending-summary article.is-increase > strong {
+  color: var(--color-red-700);
+}
+
+.spending-summary article.is-decrease > strong {
+  color: var(--color-green-700);
+}
+
+.spending-summary article.is-neutral > strong {
+  color: var(--color-petrol-900);
+}
+
+.budget-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.85fr);
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  padding: var(--space-6);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 90% 15%, rgb(232 121 74 / 10%), transparent 32%),
+    var(--surface-glass-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.budget-panel--moderate {
+  border-color: rgb(232 121 74 / 28%);
+}
+
+.budget-panel--warning,
+.budget-panel--exceeded {
+  border-color: rgb(162 61 61 / 24%);
+}
+
+.budget-panel__copy h2 {
+  margin-bottom: var(--space-2);
+  color: var(--color-petrol-950);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: -0.045em;
+}
+
+.budget-panel__copy p:last-child {
+  margin-bottom: 0;
+  color: var(--text-secondary);
+}
+
+.budget-panel__progress {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.budget-panel__track {
+  height: 13px;
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  background: var(--surface-subtle);
+  box-shadow: inset 0 1px 2px rgb(23 59 69 / 10%);
+}
+
+.budget-panel__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-green-700);
+  transition: width 500ms var(--ease-standard);
+}
+
+.budget-panel--moderate .budget-panel__track span {
+  background: var(--color-terracotta-500);
+}
+
+.budget-panel--warning .budget-panel__track span,
+.budget-panel--exceeded .budget-panel__track span {
+  background: var(--color-red-700);
+}
+
+.budget-panel__progress > div:nth-child(2) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.budget-panel__progress > div:nth-child(2) span,
+.budget-panel__progress small {
+  color: var(--text-muted);
+}
+
+.spending-section {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.spending-section > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.spending-section > header > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-petrol-800);
+}
+
+.spending-section > header > div > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.spending-section > header .eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+}
+
+.spending-section h2 {
+  color: var(--color-petrol-950);
+  font-size: var(--font-size-lg);
+}
+
+.spending-section > header > span {
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.spending-evolution {
+  margin-bottom: var(--space-5);
+}
+
+.spending-chart {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  padding: var(--space-3) var(--space-3) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 78%), rgb(255 255 255 / 48%)), var(--surface-raised);
+}
+
+.spending-chart svg {
+  width: 100%;
+  height: auto;
+  min-height: 13rem;
+  overflow: visible;
+}
+
+.spending-chart__grid {
+  stroke: var(--border-subtle);
+  stroke-dasharray: 4 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.spending-chart__area {
+  fill: rgb(232 121 74 / 9%);
+  stroke: none;
+}
+
+.spending-chart__line {
+  fill: none;
+  stroke: var(--color-terracotta-600);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.spending-chart__line--previous {
+  stroke: var(--color-petrol-500);
+  stroke-dasharray: 8 8;
+  stroke-width: 2.5;
+}
+
+.spending-chart__point {
+  fill: var(--surface-raised);
+  stroke: var(--color-terracotta-600);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.spending-chart__interactive-point {
+  color: var(--color-terracotta-600);
+  cursor: pointer;
+  outline: none;
+}
+
+.spending-chart__interactive-point > circle:first-child {
+  fill: transparent;
+}
+
+.spending-chart__interactive-point--previous .spending-chart__point {
+  stroke: var(--color-petrol-500);
+}
+
+.spending-chart__interactive-point:focus .spending-chart__point,
+.spending-chart__interactive-point:hover .spending-chart__point {
+  fill: var(--color-terracotta-100);
+  stroke-width: 5;
+}
+
+.spending-chart__budget line {
+  stroke: var(--color-petrol-700);
+  stroke-dasharray: 3 6;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.spending-chart__budget text {
+  fill: var(--color-petrol-700);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+}
+
+.spending-chart__axis {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.spending-chart__tooltip rect {
+  fill: var(--color-petrol-950);
+  filter: drop-shadow(0 8px 16px rgb(23 59 69 / 22%));
+}
+
+.spending-chart__tooltip text {
+  fill: rgb(255 255 255 / 72%);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.spending-chart__tooltip .spending-chart__tooltip-value {
+  fill: white;
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+}
+
+.spending-chart__empty-copy {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  display: grid;
+  width: min(74%, 29rem);
+  gap: var(--space-1);
+  padding: var(--space-3);
+  color: var(--text-muted);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.spending-chart__empty-copy strong {
+  color: var(--color-petrol-950);
+  font-size: var(--font-size-md);
+}
+
+.spending-chart figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 1.5rem;
+  padding-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.spending-chart figcaption > span:not(.sr-only) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spending-chart__legend-dot,
+.spending-chart__legend-line,
+.spending-chart__legend-budget {
+  display: inline-block;
+  width: 20px;
+  height: 3px;
+  border-radius: var(--radius-round);
+  background: var(--color-terracotta-600);
+}
+
+.spending-chart__legend-line {
+  height: 0;
+  border-top: 2px dashed var(--color-petrol-500);
+  background: transparent;
+}
+
+.spending-chart__legend-budget {
+  height: 0;
+  border-top: 1px dashed var(--color-petrol-700);
+  background: transparent;
+}
+
+.spending-breakdowns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.spending-ranking {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.spending-ranking article {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.spending-ranking__position {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--color-petrol-800);
+  background: var(--surface-petrol-subtle);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+.spending-ranking article > div,
+.spending-ranking article > div > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.spending-ranking article > div > div {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+}
+
+.spending-ranking article strong {
+  overflow-wrap: anywhere;
+}
+
+.spending-ranking article > div > div span {
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+  text-align: right;
+}
+
+.spending-ranking__bar {
+  height: 7px;
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  background: var(--surface-subtle);
+}
+
+.spending-ranking__bar i {
+  display: block;
+  width: var(--bar-width);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-terracotta-500);
+}
+
+.spending-ranking__bar--store i {
+  background: var(--color-petrol-700);
+}
+
+.spending-largest > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.spending-largest button {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-align: left;
+  background: rgb(255 255 255 / 52%);
+  cursor: pointer;
+}
+
+.spending-largest button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+}
+
+.spending-largest button > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.spending-largest button small {
+  color: var(--text-muted);
+}
+
+.budget-dialog {
+  width: min(100%, 31rem);
+}
+
+.budget-dialog__period {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: var(--surface-petrol-subtle);
+}
+
+.budget-dialog form,
+.budget-dialog__field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.budget-dialog__field > span:first-child {
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+.budget-dialog__currency {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.budget-dialog__currency input {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  border: 0;
+  outline: 0;
+  color: var(--color-petrol-950);
+  background: transparent;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.budget-dialog form > small {
+  color: var(--text-muted);
+}
+
+.monthly-report {
+  display: grid;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 100% 0, rgb(23 59 69 / 8%), transparent 34%),
+    var(--surface-glass-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.monthly-report__header,
+.monthly-report__header > div,
+.monthly-report__details,
+.monthly-highlights,
+.monthly-evolution {
+  display: grid;
+}
+
+.monthly-report__header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.monthly-report__header > div {
+  gap: 0.2rem;
+}
+
+.monthly-report__header .eyebrow {
+  margin: 0;
+}
+
+.monthly-report__header h2,
+.monthly-highlights h3,
+.monthly-evolution h3 {
+  color: var(--color-petrol-950);
+}
+
+.monthly-report__header > div > p:last-child,
+.monthly-evolution header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.monthly-report__toggle {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-round);
+  color: var(--color-petrol-900);
+  background: var(--surface-raised);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.monthly-report__toggle svg {
+  transition: transform var(--transition-base);
+}
+
+.monthly-report__toggle svg.is-open {
+  transform: rotate(180deg);
+}
+
+.monthly-report__preview,
+.monthly-report__metrics,
+.monthly-highlights > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.monthly-report__details {
+  gap: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.monthly-report__metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.monthly-report-metric {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 58%);
+}
+
+.monthly-report-metric > span {
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.monthly-report-metric > strong {
+  overflow-wrap: anywhere;
+  color: var(--color-petrol-950);
+  font-size: var(--font-size-md);
+}
+
+.monthly-report-metric > small {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.monthly-highlights,
+.monthly-evolution {
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.monthly-highlights > header,
+.monthly-evolution > header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-terracotta-700);
+}
+
+.monthly-evolution > header > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.monthly-evolution__chart {
+  display: grid;
+  min-height: 15rem;
+  grid-template-columns: repeat(6, minmax(2.5rem, 1fr));
+  align-items: end;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding: var(--space-5) var(--space-3) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 48%);
+}
+
+.monthly-evolution__chart > div {
+  display: grid;
+  height: 12rem;
+  min-width: 2.5rem;
+  grid-template-rows: 2rem minmax(1rem, 1fr) auto;
+  align-items: end;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.monthly-evolution__chart span {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.monthly-evolution__chart i {
+  width: min(100%, 3.5rem);
+  height: var(--month-height);
+  min-height: 4px;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(180deg, var(--color-terracotta-500), var(--color-petrol-700));
+}
+
+.monthly-evolution__chart strong {
+  color: var(--color-petrol-900);
+  font-size: var(--font-size-caption);
+  text-transform: capitalize;
+}
+
+.monthly-report__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  color: var(--color-petrol-800);
+  background: var(--surface-petrol-subtle);
+}
+
+.monthly-report__empty p,
+.monthly-evolution__empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@media (max-width: 959px) {
+  .spending-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .budget-panel {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  .monthly-report__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .spending-page {
+    padding-bottom: calc(var(--space-8) + 4.5rem);
+  }
+
+  .spending-page .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .spending-page .page-header__accessory .button,
+  .budget-panel > .button {
+    width: 100%;
+  }
+
+  .spending-breakdowns {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-report__header {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-report__toggle {
+    width: 100%;
+  }
+
+  .monthly-report__preview,
+  .monthly-highlights > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 479px) {
+  .spending-summary article {
+    min-height: 122px;
+    padding: var(--space-3);
+  }
+
+  .spending-summary article > strong {
+    font-size: clamp(1.05rem, 6.2vw, 1.35rem);
+  }
+
+  .budget-panel,
+  .spending-section,
+  .monthly-report {
+    padding: var(--space-4);
+  }
+
+  .monthly-report__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-evolution__chart {
+    gap: var(--space-2);
+    padding-inline: var(--space-2);
+  }
+
+  .spending-section > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .spending-chart {
+    padding: var(--space-2) 0 var(--space-3);
+  }
+
+  .spending-chart svg {
+    min-height: 12rem;
+  }
+
+  .spending-chart__axis {
+    font-size: 22px;
+  }
+
+  .spending-chart__budget text {
+    font-size: 19px;
+  }
+
+  .spending-chart__empty-copy {
+    top: 44%;
+    width: 78%;
+    padding: var(--space-2);
+    font-size: var(--font-size-caption);
+  }
+
+  .spending-chart figcaption {
+    gap: var(--space-2) var(--space-3);
+    padding-inline: var(--space-2);
+  }
+
+  .spending-ranking article > div > div {
+    grid-template-columns: 1fr;
+  }
+
+  .spending-ranking article > div > div span {
+    text-align: left;
+  }
+
+  .spending-largest button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .spending-largest button > svg {
+    display: none;
+  }
+}

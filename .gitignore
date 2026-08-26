@@ -1,0 +1,24 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.vite/
+.cache/
+tmp/
+temp/
+*.tmp
+.env
+.env.*
+!.env.example
+.DS_Store
+*.local
+*.log
+.idea/
+.vscode/
+android/.gradle/
+android/local.properties
+android/app/build/
+
+# Projeto preexistente e independente preservado no workspace.
+/Aldebaran XVIII/

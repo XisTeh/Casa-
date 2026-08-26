@@ -1,0 +1,280 @@
+.settings-page {
+  padding-bottom: var(--space-8);
+}
+.settings-card {
+  padding: var(--space-6);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-card);
+}
+.settings-card > header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.settings-card > header > div {
+  flex: 1;
+}
+.settings-card h2,
+.settings-card h3,
+.settings-card p {
+  margin: 0;
+}
+.settings-card__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--color-petrol-800);
+  background: var(--surface-petrol-subtle);
+}
+.settings-house {
+  margin-bottom: var(--space-5);
+}
+.settings-house__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  padding-bottom: var(--space-5);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-house__facts span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.settings-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-5) 0 var(--space-3);
+}
+.settings-section-title p,
+.settings-app p,
+.settings-app small {
+  color: var(--text-muted);
+}
+.settings-members__list {
+  display: grid;
+  gap: var(--space-2);
+}
+.settings-members__list article {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 55%);
+}
+.settings-members__details,
+.settings-profile__details {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.settings-members__list small,
+.settings-profile small,
+.settings-houses small {
+  color: var(--text-muted);
+}
+.settings-members__list article > div {
+  display: flex;
+  gap: var(--space-1);
+}
+.settings-members__list article button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  color: var(--color-petrol-800);
+  background: transparent;
+  cursor: pointer;
+}
+.settings-members__list article button:hover {
+  background: var(--surface-petrol-subtle);
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+.settings-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.settings-feedback {
+  margin: calc(var(--space-5) * -1) 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgb(54 113 91 / 20%);
+  border-radius: var(--radius-md);
+  color: var(--color-green-700);
+  background: var(--color-green-100);
+}
+.settings-houses {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.settings-houses > button {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  text-align: left;
+  background: rgb(255 255 255 / 58%);
+  cursor: pointer;
+}
+.settings-houses > button > span {
+  display: grid;
+  flex: 1;
+}
+.settings-houses > button.is-active {
+  border-color: rgb(232 121 74 / 35%);
+  background: rgb(232 121 74 / 8%);
+}
+.settings-app {
+  margin-bottom: var(--space-6);
+}
+.settings-app > small {
+  display: block;
+  margin-top: var(--space-2);
+}
+.settings-app > .button {
+  margin-top: var(--space-4);
+}
+.settings-account-email {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+}
+.settings-card .settings-houses + .button + .button {
+  margin-left: var(--space-2);
+}
+.settings-field {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-weight: var(--font-weight-semibold);
+}
+.settings-field input,
+.settings-field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: white;
+}
+.settings-dialog form {
+  margin-top: var(--space-5);
+}
+.settings-photo-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-subtle);
+}
+.settings-photo-field__actions {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.settings-photo-field__actions > span {
+  width: 100%;
+  font-weight: var(--font-weight-semibold);
+}
+.invite-dialog__content {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.invite-dialog__content p,
+.invite-dialog__content small {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+}
+.invite-dialog__content code {
+  overflow-wrap: anywhere;
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-petrol-900);
+  text-align: center;
+  background: var(--surface-petrol-subtle);
+  font-size: clamp(0.9rem, 4vw, 1.15rem);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+}
+@media (max-width: 720px) {
+  .settings-card {
+    padding: var(--space-4);
+  }
+  .settings-card > header,
+  .settings-section-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .settings-card > header .button,
+  .settings-section-title .button,
+  .settings-profile > .button {
+    width: 100%;
+  }
+  .settings-profile {
+    flex-wrap: wrap;
+  }
+  .settings-profile__details {
+    min-width: calc(100% - 76px);
+  }
+  .settings-card .settings-houses + .button + .button {
+    margin-top: var(--space-2);
+    margin-left: 0;
+  }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-members__list article {
+    align-items: center;
+  }
+}
+@media (max-width: 430px) {
+  .settings-photo-field {
+    align-items: flex-start;
+  }
+  .settings-photo-field__actions .button {
+    width: 100%;
+  }
+}
+@media (max-width: 380px) {
+  .settings-members__list article {
+    flex-wrap: wrap;
+  }
+  .settings-members__list article > div {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

@@ -1,0 +1,7 @@
+dist
+node_modules
+android
+playwright-report
+test-results
+package-lock.json
+Aldebaran XVIII
