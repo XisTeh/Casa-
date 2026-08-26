@@ -233,7 +233,7 @@ export function ProductFormDialog({
             </Button>
           )}
           <footer className="shopping-dialog__footer">
-            <Button onClick={onClose} type="button" variant="ghost">
+            <Button onClick={onClose} type="button" variant="secondary">
               Cancelar
             </Button>
             <Button loading={saving} type="submit">

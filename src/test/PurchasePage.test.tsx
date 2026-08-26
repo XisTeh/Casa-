@@ -66,6 +66,8 @@ describe('PurchasePage', () => {
 
     await user.click(screen.getByRole('link', { name: 'Abrir histórico de compras' }));
     expect(await screen.findByRole('heading', { name: 'Histórico' })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+    expect(screen.queryByRole('dialog', { name: 'Empório Casaê' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Empório Casaê/i }));
     const detail = screen.getByRole('dialog', { name: 'Empório Casaê' });
     expect(within(detail).getByText('Arroz')).toBeInTheDocument();

@@ -149,6 +149,7 @@
 }
 .settings-app {
   margin-bottom: var(--space-6);
+  scroll-margin-top: calc(5rem + env(safe-area-inset-top));
 }
 .settings-app > small {
   display: block;
@@ -156,6 +157,52 @@
 }
 .settings-app > .button {
   margin-top: var(--space-4);
+}
+.settings-app__install {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+.pwa-install-action,
+.pwa-install-instructions,
+.pwa-install-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-base);
+}
+.pwa-install-action {
+  flex-wrap: wrap;
+}
+.pwa-install-action p {
+  flex: 1 1 18rem;
+  color: var(--text-secondary);
+}
+.pwa-install-action > small {
+  width: 100%;
+  color: var(--text-muted);
+}
+.pwa-install-instructions > svg,
+.pwa-install-status > svg {
+  flex: 0 0 auto;
+  color: var(--color-petrol-800);
+}
+.pwa-install-status > svg {
+  color: var(--color-green-700);
+}
+.pwa-install-instructions > span,
+.pwa-install-status > span {
+  display: grid;
+  gap: var(--space-1);
+}
+.pwa-install-instructions small,
+.pwa-install-status small {
+  color: var(--text-muted);
 }
 .settings-account-email {
   display: flex;
@@ -253,6 +300,9 @@
   .settings-card .settings-houses + .button + .button {
     margin-top: var(--space-2);
     margin-left: 0;
+  }
+  .pwa-install-action .button {
+    width: 100%;
   }
   .settings-grid {
     grid-template-columns: 1fr;

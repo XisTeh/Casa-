@@ -71,7 +71,7 @@ export function DeleteStoreDialog({
           </p>
         )}
         <footer className="shopping-dialog__footer">
-          <Button onClick={onClose} type="button" variant="ghost">
+          <Button onClick={onClose} type="button" variant="secondary">
             Voltar
           </Button>
           <Button

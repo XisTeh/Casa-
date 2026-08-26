@@ -114,7 +114,7 @@ export function StoreFormDialog({ store, onClose, onSubmit }: StoreFormDialogPro
             </p>
           )}
           <footer className="shopping-dialog__footer">
-            <Button onClick={onClose} type="button" variant="ghost">
+            <Button onClick={onClose} type="button" variant="secondary">
               Voltar
             </Button>
             <Button loading={isSaving} type="submit">

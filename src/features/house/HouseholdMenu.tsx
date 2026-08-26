@@ -1,7 +1,8 @@
-import { Check, ChevronDown, Home, Settings, UserRound, Users } from 'lucide-react';
+import { Check, ChevronDown, Download, Home, Settings, UserRound, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ProfileAvatar } from '../../components/ProfileAvatar/ProfileAvatar';
+import { usePwaInstall } from '../../pwa/use-pwa-install';
 import { useHousehold } from './HouseContext';
 
 export function HouseholdMenu({ mobile = false }: { mobile?: boolean }) {
@@ -10,6 +11,8 @@ export function HouseholdMenu({ mobile = false }: { mobile?: boolean }) {
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<'main' | 'members' | 'houses'>('main');
   const rootRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const { installed, installable, installing, promptInstall } = usePwaInstall();
 
   useEffect(() => {
     if (!open) return;
@@ -35,6 +38,15 @@ export function HouseholdMenu({ mobile = false }: { mobile?: boolean }) {
   async function chooseMember(id: string) {
     await switchMember(id);
     setOpen(false);
+  }
+
+  async function installCasae() {
+    setOpen(false);
+    if (installable) {
+      await promptInstall();
+      return;
+    }
+    navigate('/configuracoes#aplicativo');
   }
 
   return (
@@ -87,6 +99,16 @@ export function HouseholdMenu({ mobile = false }: { mobile?: boolean }) {
               <Link onClick={() => setOpen(false)} role="menuitem" to="/configuracoes">
                 <Settings aria-hidden="true" size={17} /> Configurações
               </Link>
+              {!installed && !installing && (
+                <button
+                  className="household-menu__install"
+                  onClick={() => void installCasae()}
+                  role="menuitem"
+                  type="button"
+                >
+                  <Download aria-hidden="true" size={17} /> Instalar Casaê
+                </button>
+              )}
             </div>
           )}
           {section === 'members' && (

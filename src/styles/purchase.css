@@ -96,6 +96,19 @@
   background: rgb(255 255 255 / 7%);
 }
 
+.purchase-start-options .button--ghost:hover:not(:disabled),
+.purchase-start-options .button--ghost:focus-visible {
+  border-color: rgb(255 255 255 / 32%);
+  color: var(--color-white);
+  background: rgb(255 255 255 / 15%);
+}
+
+.purchase-start-surface .button--primary:hover:not(:disabled),
+.purchase-start-surface .button--primary:focus-visible {
+  color: var(--color-petrol-950);
+  background: var(--color-white);
+}
+
 .purchase-start-options .button:disabled {
   opacity: 0.46;
 }
@@ -761,13 +774,8 @@
 }
 
 .purchase-actions .purchase-actions__complete:not(:disabled) {
-  color: var(--color-white);
-  background: var(--color-terracotta-600);
-  box-shadow: 0 10px 24px rgb(213 99 54 / 24%);
-}
-
-.purchase-actions .purchase-actions__complete:hover:not(:disabled) {
-  background: var(--color-terracotta-700);
+  color: var(--text-on-primary);
+  box-shadow: 0 10px 24px rgb(23 59 69 / 22%);
 }
 
 .purchase-actions > div {
@@ -776,7 +784,7 @@
   gap: 0.12rem;
 }
 
-.purchase-actions span {
+.purchase-actions > div > span {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
@@ -1219,6 +1227,14 @@
 
   .purchase-store-picker {
     grid-template-columns: 1fr;
+  }
+
+  .purchase-start-form .shopping-dialog__footer {
+    grid-template-columns: 1fr;
+  }
+
+  .purchase-start-form .shopping-dialog__footer .button {
+    width: 100%;
   }
 
   .purchase-item-form__field,

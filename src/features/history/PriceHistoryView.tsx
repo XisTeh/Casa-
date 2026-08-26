@@ -6,6 +6,7 @@ import type {
 } from '../../application/price-history-selectors';
 import type { Category } from '../../domain/catalog';
 import type { Store as StoreType } from '../../domain/store';
+import { SelectField } from '../../components/SelectField/SelectField';
 import { PriceVariationBadge } from './PriceVariationBadge';
 
 export function PriceHistoryView({
@@ -40,47 +41,39 @@ export function PriceHistoryView({
             value={filters.query}
           />
         </label>
-        <label>
-          <Layers3 aria-hidden="true" size={17} />
-          <span className="sr-only">Categoria</span>
-          <select
-            onChange={(event) => onFilter('categoria', event.target.value)}
-            value={filters.categoryId}
-          >
-            <option value="">Todas as categorias</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <Store aria-hidden="true" size={17} />
-          <span className="sr-only">Mercado</span>
-          <select
-            onChange={(event) => onFilter('mercado', event.target.value)}
-            value={filters.storeId}
-          >
-            <option value="">Todos os mercados</option>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <ArrowDownUp aria-hidden="true" size={17} />
-          <span className="sr-only">Ordenação</span>
-          <select onChange={(event) => onFilter('ordem', event.target.value)} value={filters.order}>
-            <option value="recent">Mais recentes</option>
-            <option value="increase">Maiores altas</option>
-            <option value="decrease">Maiores quedas</option>
-            <option value="lowest">Menores preços</option>
-            <option value="name">Nome do produto</option>
-          </select>
-        </label>
+        <SelectField
+          icon={<Layers3 aria-hidden="true" size={17} />}
+          label="Categoria"
+          onChange={(value) => onFilter('categoria', value)}
+          options={[
+            { label: 'Todas as categorias', value: '' },
+            ...categories.map((category) => ({ label: category.name, value: category.id })),
+          ]}
+          value={filters.categoryId}
+        />
+        <SelectField
+          icon={<Store aria-hidden="true" size={17} />}
+          label="Mercado"
+          onChange={(value) => onFilter('mercado', value)}
+          options={[
+            { label: 'Todos os mercados', value: '' },
+            ...stores.map((store) => ({ label: store.name, value: store.id })),
+          ]}
+          value={filters.storeId}
+        />
+        <SelectField
+          icon={<ArrowDownUp aria-hidden="true" size={17} />}
+          label="Ordenação"
+          onChange={(value) => onFilter('ordem', value)}
+          options={[
+            { label: 'Mais recentes', value: 'recent' },
+            { label: 'Maiores altas', value: 'increase' },
+            { label: 'Maiores quedas', value: 'decrease' },
+            { label: 'Menores preços', value: 'lowest' },
+            { label: 'Nome do produto', value: 'name' },
+          ]}
+          value={filters.order}
+        />
       </section>
 
       {projections.length === 0 ? (

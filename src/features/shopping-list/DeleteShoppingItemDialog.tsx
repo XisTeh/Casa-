@@ -62,7 +62,7 @@ export function DeleteShoppingItemDialog({
         <h2 id="remove-item-title">Remover {item.productName} da lista?</h2>
         <p>Esta ação remove somente este item da lista da Casa.</p>
         <footer className="shopping-dialog__footer">
-          <Button onClick={onClose} type="button" variant="ghost">
+          <Button onClick={onClose} type="button" variant="secondary">
             Cancelar
           </Button>
           <Button

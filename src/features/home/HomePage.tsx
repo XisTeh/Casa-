@@ -158,7 +158,10 @@ export function HomePage() {
                 <span>
                   {spending.budget ? 'do orçamento mensal' : 'Orçamento ainda não definido'}
                 </span>
-                <Link to="/gastos">{spending.budget ? 'Ver gastos' : 'Definir orçamento'}</Link>
+                <Link className="budget-progress__action" to="/gastos">
+                  {spending.budget ? 'Ver gastos' : 'Definir orçamento'}
+                  <ArrowRight aria-hidden="true" size={16} />
+                </Link>
               </div>
             </footer>
           </Card>
@@ -196,14 +199,7 @@ export function HomePage() {
                   ? formatCurrencyFromCents(latestCompletedSession.totalPriceCents)
                   : '—'}
               </strong>
-              <Link
-                to={
-                  latestCompletedSession
-                    ? `/historico?compra=${latestCompletedSession.id}`
-                    : '/historico'
-                }
-                aria-label="Abrir histórico de compras"
-              >
+              <Link to="/historico" aria-label="Abrir histórico de compras">
                 <ChevronRight aria-hidden="true" size={20} />
               </Link>
             </footer>

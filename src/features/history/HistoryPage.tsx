@@ -6,6 +6,7 @@ import {
   ShoppingBasket,
   Store,
   TrendingUp,
+  UserRound,
   WalletCards,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -30,6 +31,7 @@ import {
   type ProductPriceProjection,
 } from '../../application/price-history-selectors';
 import { PageHeader } from '../../components/PageHeader/PageHeader';
+import { SelectField } from '../../components/SelectField/SelectField';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateView/StateView';
 import type { PurchaseSession } from '../../domain/purchase';
 import { useProducts } from '../products/ProductContext';
@@ -220,50 +222,38 @@ export function HistoryPage() {
                 value={filters.query}
               />
             </label>
-            <label>
-              <CalendarRange aria-hidden="true" size={17} />
-              <span className="sr-only">Período</span>
-              <select
-                onChange={(event) =>
-                  updateFilter('period', event.target.value === 'all' ? '' : event.target.value)
-                }
-                value={filters.period}
-              >
-                <option value="all">Todo o período</option>
-                <option value="30-days">Últimos 30 dias</option>
-                <option value="90-days">Últimos 90 dias</option>
-                <option value="current-year">Este ano</option>
-              </select>
-            </label>
-            <label>
-              <Store aria-hidden="true" size={17} />
-              <span className="sr-only">Mercado</span>
-              <select
-                onChange={(event) => updateFilter('mercado', event.target.value)}
-                value={filters.storeId}
-              >
-                <option value="">Todos os mercados</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Comprador</span>
-              <select
-                onChange={(event) => updateFilter('comprador', event.target.value)}
-                value={filters.buyer}
-              >
-                <option value="">Todos os compradores</option>
-                {buyers.map((buyer) => (
-                  <option key={buyer} value={buyer}>
-                    {buyer}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              icon={<CalendarRange aria-hidden="true" size={17} />}
+              label="Período"
+              onChange={(value) => updateFilter('period', value === 'all' ? '' : value)}
+              options={[
+                { label: 'Todo o período', value: 'all' },
+                { label: 'Últimos 30 dias', value: '30-days' },
+                { label: 'Últimos 90 dias', value: '90-days' },
+                { label: 'Este ano', value: 'current-year' },
+              ]}
+              value={filters.period}
+            />
+            <SelectField
+              icon={<Store aria-hidden="true" size={17} />}
+              label="Mercado"
+              onChange={(value) => updateFilter('mercado', value)}
+              options={[
+                { label: 'Todos os mercados', value: '' },
+                ...stores.map((store) => ({ label: store.name, value: store.id })),
+              ]}
+              value={filters.storeId}
+            />
+            <SelectField
+              icon={<UserRound aria-hidden="true" size={17} />}
+              label="Comprador"
+              onChange={(value) => updateFilter('comprador', value)}
+              options={[
+                { label: 'Todos os compradores', value: '' },
+                ...buyers.map((buyer) => ({ label: buyer, value: buyer })),
+              ]}
+              value={filters.buyer}
+            />
           </section>
 
           {groups.length === 0 ? (

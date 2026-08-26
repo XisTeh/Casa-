@@ -580,10 +580,16 @@
   grid-column: 1 / -1;
   justify-content: flex-end;
   gap: var(--space-3);
-  margin-top: 0;
-  padding-top: var(--space-3);
-  padding-bottom: max(var(--space-1), env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, transparent, var(--surface-glass-strong) 26%);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-base);
+}
+
+.shopping-dialog__footer .button {
+  min-height: var(--control-height);
 }
 
 .shopping-dialog--confirm {
@@ -815,7 +821,10 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
+    padding: var(--space-3);
     padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+    border-radius: var(--radius-lg);
+    background: var(--surface-base);
   }
 
   .shopping-dialog__footer .button {

@@ -94,6 +94,8 @@
   min-width: 0;
   align-items: center;
   gap: var(--space-3);
+  border-radius: var(--radius-md);
+  text-decoration: none;
 }
 
 .brand__mark {
@@ -610,6 +612,19 @@
 .household-menu__actions a:hover,
 .household-menu__choices button:hover {
   background: var(--surface-petrol-subtle);
+}
+
+.household-menu__actions .household-menu__install {
+  margin-top: var(--space-1);
+  border: 1px solid rgb(23 59 69 / 10%);
+  color: var(--color-petrol-950);
+  background: var(--surface-petrol-subtle);
+  font-weight: var(--font-weight-bold);
+}
+
+.household-menu__actions .household-menu__install:hover {
+  border-color: rgb(23 59 69 / 18%);
+  background: var(--color-petrol-100);
 }
 
 .household-menu__choices > span {

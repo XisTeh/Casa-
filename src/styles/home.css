@@ -419,17 +419,32 @@
   font-size: var(--font-size-caption);
 }
 
-.budget-progress__meta a {
+.budget-progress__action {
   display: inline-flex;
-  min-height: 30px;
+  min-height: 42px;
   align-items: center;
-  color: var(--color-petrol-900);
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding-inline: var(--space-4);
+  border: 1px solid rgb(23 59 69 / 12%);
+  border-radius: var(--radius-sm);
+  color: var(--text-on-primary);
+  background: var(--color-petrol-900);
+  box-shadow: var(--shadow-xs);
   font-weight: var(--font-weight-bold);
   text-decoration: none;
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-.budget-progress__meta a:hover {
-  color: var(--color-terracotta-700);
+.budget-progress__action:hover {
+  color: var(--text-on-primary);
+  background: var(--color-petrol-800);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .latest-purchase strong {

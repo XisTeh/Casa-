@@ -544,7 +544,8 @@
   backdrop-filter: blur(16px);
 }
 
-.history-filters label {
+.history-filters label,
+.history-filters .select-field {
   position: relative;
   display: flex;
   min-width: 0;
@@ -559,7 +560,7 @@
 }
 
 .history-filters input,
-.history-filters select {
+.history-filters .select-field__trigger {
   width: 100%;
   min-width: 0;
   border: 0;
@@ -569,7 +570,9 @@
   font-size: var(--font-size-sm);
 }
 
-.history-filters label:focus-within {
+.history-filters label:focus-within,
+.history-filters .select-field:focus-within,
+.history-filters .select-field.is-open {
   border-color: rgb(232 121 74 / 40%);
   box-shadow: 0 0 0 3px rgb(232 121 74 / 9%);
 }

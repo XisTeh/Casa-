@@ -151,7 +151,7 @@ export function EditProfileDialog({
             </p>
           )}
           <footer className="shopping-dialog__footer">
-            <Button onClick={onClose} type="button" variant="ghost">
+            <Button onClick={onClose} type="button" variant="secondary">
               Cancelar
             </Button>
             <Button disabled={processing} loading={saving} type="submit">

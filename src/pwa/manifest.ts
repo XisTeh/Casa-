@@ -1,0 +1,40 @@
+export const casaeManifest = {
+  id: '/',
+  name: 'Casaê',
+  short_name: 'Casaê',
+  description: 'Compras e gastos da casa, organizados em conjunto.',
+  theme_color: '#173b45',
+  background_color: '#f7f6f2',
+  display: 'standalone' as const,
+  start_url: '/',
+  scope: '/',
+  lang: 'pt-BR',
+  orientation: 'portrait-primary' as const,
+  categories: ['lifestyle', 'productivity'],
+  icons: [
+    {
+      src: '/icons/casae-app-v2-192.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'any' as const,
+    },
+    {
+      src: '/icons/casae-app-v2-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'any' as const,
+    },
+    {
+      src: '/icons/casae-maskable-v2-192.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'maskable' as const,
+    },
+    {
+      src: '/icons/casae-maskable-v2-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'maskable' as const,
+    },
+  ],
+};

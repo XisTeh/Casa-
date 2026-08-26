@@ -19,10 +19,102 @@ test('usa navegação inferior no mobile e sidebar no desktop', async ({ page },
   if (isMobile) {
     await expect(bottomNavigation).toBeVisible();
     await expect(sidebar).toBeHidden();
+    await page.getByRole('button', { name: 'Abrir perfil de Raabe' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Instalar Casaê' })).toBeVisible();
   } else {
     await expect(sidebar).toBeVisible();
     await expect(bottomNavigation).toBeHidden();
   }
+});
+
+test('mantém ações e filtros legíveis e bem posicionados no mobile', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes('mobile'), 'Regressão visual específica de mobile.');
+  await page.setViewportSize({ width: 440, height: 900 });
+
+  await page.goto('/comprar');
+  const quickPurchase = page.getByRole('button', { name: 'Começar compra rápida' });
+  await quickPurchase.hover();
+  await expect
+    .poll(() => quickPurchase.evaluate((button) => getComputedStyle(button).backgroundColor))
+    .toBe('rgba(255, 255, 255, 0.15)');
+  const hoverStyle = await quickPurchase.evaluate((button) => ({
+    background: getComputedStyle(button).backgroundColor,
+    color: getComputedStyle(button.querySelector('.button__label')!).color,
+  }));
+  expect(hoverStyle.background).toBe('rgba(255, 255, 255, 0.15)');
+  expect(hoverStyle.color).toBe('rgb(255, 255, 255)');
+
+  await quickPurchase.click();
+  const purchaseDialog = page.getByRole('dialog', { name: 'Onde você está comprando?' });
+  const footerLayout = await purchaseDialog.locator('.shopping-dialog__footer').evaluate((footer) => {
+    const buttons = [...footer.querySelectorAll<HTMLElement>('.button')];
+    return {
+      columns: getComputedStyle(footer).gridTemplateColumns.split(' ').length,
+      labelsFit: buttons.every((button) => {
+        const label = button.querySelector<HTMLElement>('.button__label')!;
+        return label.scrollWidth <= label.clientWidth && button.scrollWidth <= button.clientWidth;
+      }),
+    };
+  });
+  expect(footerLayout).toEqual({ columns: 1, labelsFit: true });
+  await purchaseDialog.getByRole('button', { name: 'Voltar' }).click();
+
+  await page.goto('/produtos');
+  const filterSpacing = await page.locator('.product-segment').evaluate((segment) => {
+    const segmentBounds = segment.getBoundingClientRect();
+    const lastButtonBounds = segment.querySelector('button:last-child')!.getBoundingClientRect();
+    return {
+      documentGap: document.documentElement.clientWidth - segmentBounds.right,
+      innerGap: segmentBounds.right - lastButtonBounds.right,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(filterSpacing.documentGap).toBeGreaterThanOrEqual(16);
+  expect(filterSpacing.innerGap).toBeGreaterThanOrEqual(4);
+  expect(filterSpacing.overflow).toBe(0);
+
+  await page.locator('.mobile-header .brand').click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: /olá, raabe/i })).toBeVisible();
+});
+
+test('usa seletores visuais do Casaê no histórico', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes('mobile'), 'Regressão visual específica de mobile.');
+  await page.setViewportSize({ width: 440, height: 900 });
+  await page.goto('/historico?visao=precos');
+
+  const filters = page.getByRole('region', { name: 'Filtros do histórico de preços' });
+  await expect(filters.locator('select')).toHaveCount(0);
+  const category = filters.getByRole('combobox', { name: 'Categoria' });
+  await category.click();
+
+  const menu = page.getByRole('listbox', { name: 'Categoria' });
+  await expect(menu).toBeVisible();
+  const menuLayout = await menu.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const fieldBounds = element.closest('.select-field')!.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      aligned:
+        Math.abs(bounds.left - fieldBounds.left) <= 2 &&
+        Math.abs(bounds.right - fieldBounds.right) <= 2,
+      background: style.backgroundColor,
+      insideViewport: bounds.left >= 0 && bounds.right <= document.documentElement.clientWidth,
+      radius: style.borderRadius,
+      scrollable: element.scrollHeight > element.clientHeight,
+      shadow: style.boxShadow,
+    };
+  });
+  expect(menuLayout.aligned).toBe(true);
+  expect(menuLayout.background).toBe('rgb(255, 255, 255)');
+  expect(menuLayout.insideViewport).toBe(true);
+  expect(menuLayout.radius).not.toBe('0px');
+  expect(menuLayout.scrollable).toBe(true);
+  expect(menuLayout.shadow).not.toBe('none');
+
+  await page.getByRole('option', { name: 'Pet' }).click();
+  await expect(category).toContainText('Pet');
+  await expect(page).toHaveURL(/categoria=/);
 });
 
 test('preserva o layout nos breakpoints críticos sem overflow horizontal', async ({ page }) => {
@@ -158,15 +250,30 @@ test('mantém botões, campos e formulário longo corretos em 320px', async ({ p
   await expect(footer.getByRole('button', { name: 'Adicionar produto' })).toBeVisible();
   const footerLayout = await footer.evaluate((element) => {
     const actions = [...element.querySelectorAll<HTMLElement>('.button')];
-    return actions.map((action) => ({
-      width: action.getBoundingClientRect().width,
-      whiteSpace: getComputedStyle(action).whiteSpace,
-    }));
+    const cancel = actions[0]!;
+    return {
+      actions: actions.map((action) => ({
+        width: action.getBoundingClientRect().width,
+        whiteSpace: getComputedStyle(action).whiteSpace,
+      })),
+      cancelBackground: getComputedStyle(cancel).backgroundColor,
+      cancelBorder: getComputedStyle(cancel).borderStyle,
+      cancelVariant: cancel.classList.contains('button--secondary'),
+      columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      footerRadius: getComputedStyle(element).borderRadius,
+    };
   });
-  expect(footerLayout).toHaveLength(2);
-  expect(footerLayout.every((action) => action.width > 200 && action.whiteSpace === 'nowrap')).toBe(
-    true,
-  );
+  expect(footerLayout.actions).toHaveLength(2);
+  expect(
+    footerLayout.actions.every((action) => action.width > 200 && action.whiteSpace === 'nowrap'),
+  ).toBe(true);
+  expect(footerLayout).toMatchObject({
+    cancelBackground: 'rgb(255, 255, 255)',
+    cancelBorder: 'solid',
+    cancelVariant: true,
+    columns: 1,
+  });
+  expect(footerLayout.footerRadius).not.toBe('0px');
 });
 
 test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) => {
@@ -456,7 +563,24 @@ test('atualiza Gastos e Dashboard após uma compra e persiste o orçamento mensa
   await expect(dashboardSpending).toContainText('R$ 20,00');
   await expect(dashboardSpending).toContainText('R$ 100,00');
   await expect(dashboardSpending).toContainText('20%');
+  const spendingAction = dashboardSpending.getByRole('link', { name: 'Ver gastos' });
+  await expect(spendingAction).toBeVisible();
+  const spendingActionStyle = await spendingAction.evaluate((link) => ({
+    background: getComputedStyle(link).backgroundColor,
+    color: getComputedStyle(link).color,
+    height: link.getBoundingClientRect().height,
+  }));
+  expect(spendingActionStyle).toMatchObject({
+    background: 'rgb(23, 59, 69)',
+    color: 'rgba(255, 255, 255, 0.9)',
+  });
+  expect(spendingActionStyle.height).toBeGreaterThanOrEqual(40);
 
+  await page.getByRole('link', { name: 'Abrir histórico de compras' }).click();
+  await expect(page).toHaveURL(/\/historico$/);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page.goto('/');
   await page.reload();
   await expect(page.locator('.summary-card--spending')).toContainText('R$ 100,00');
 });
@@ -614,11 +738,19 @@ test('faz compra rápida com três produtos em 320px', async ({ page }, testInfo
   await expect(finalizePurchase).toBeEnabled();
   const enabledStyle = await finalizePurchase.evaluate((button) => ({
     background: getComputedStyle(button).backgroundColor,
+    color: getComputedStyle(button).color,
+    labelColor: getComputedStyle(button.querySelector('.button__label')!).color,
     opacity: getComputedStyle(button).opacity,
   }));
+  expect(enabledStyle).toEqual({
+    background: 'rgb(23, 59, 69)',
+    color: 'rgba(255, 255, 255, 0.9)',
+    labelColor: 'rgba(255, 255, 255, 0.9)',
+    opacity: '1',
+  });
   expect(enabledStyle.background).not.toBe(disabledStyle.background);
   expect(Number(enabledStyle.opacity)).toBeGreaterThan(Number(disabledStyle.opacity));
-  await finalizePurchase.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight }));
   const collision = await page.evaluate(() => {
     const cta = document.querySelector<HTMLElement>('.purchase-actions__complete')!;
     const navigation = document.querySelector<HTMLElement>('.bottom-nav')!;

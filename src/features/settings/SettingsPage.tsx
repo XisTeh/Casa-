@@ -13,7 +13,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { HouseMember } from '../../domain/house';
 import { ProfileAvatar } from '../../components/ProfileAvatar/ProfileAvatar';
 import { Button } from '../../components/Button/Button';
@@ -26,6 +26,7 @@ import { HouseInviteDialog } from './HouseInviteDialog';
 import { JoinHouseDialog } from './JoinHouseDialog';
 import type { HouseInviteReceipt } from '../../domain/online-house';
 import { useOptionalAuth } from '../auth/AuthContext';
+import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
 
 type DialogState =
   'edit-house' | 'create-house' | 'add-member' | 'edit-profile' | HouseMember | null;
@@ -42,6 +43,14 @@ export function SettingsPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [joining, setJoining] = useState(false);
   const isOwner = activeMember.role === 'owner';
+
+  useEffect(() => {
+    if (window.location.hash !== '#aplicativo') return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('aplicativo')?.scrollIntoView?.({ block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   return (
     <div className="settings-page">
@@ -214,7 +223,7 @@ export function SettingsPage() {
           )}
         </section>
       </div>
-      <section className="settings-card settings-app">
+      <section className="settings-card settings-app" id="aplicativo">
         <header>
           <span className="settings-card__icon">
             <Info aria-hidden="true" size={21} />
@@ -251,6 +260,10 @@ export function SettingsPage() {
             </small>
           </>
         )}
+        <div className="settings-app__install" aria-label="Aplicativo">
+          <h3>Aplicativo</h3>
+          <PwaInstallPanel />
+        </div>
       </section>
       {dialog === 'edit-house' && (
         <HouseholdFormDialog
