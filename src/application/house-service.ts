@@ -1,7 +1,9 @@
-import { DEFAULT_CATEGORY_DEFINITIONS, normalizeCatalogName } from '../domain/catalog';
-import type { CategoryRepository } from '../domain/category-repository';
 import type { House, HouseMember, HouseMemberRole } from '../domain/house';
 import type { HouseRepository } from '../domain/house-repository';
+
+export interface DefaultCategoryInitializer {
+  ensureDefaultCategoriesForHouse(houseId: string): Promise<unknown>;
+}
 
 function createId(prefix: string) {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
@@ -25,7 +27,7 @@ export type HouseholdSnapshot = {
 export class HouseService {
   constructor(
     private readonly repository: HouseRepository,
-    private readonly categories: CategoryRepository,
+    private readonly categories: DefaultCategoryInitializer,
   ) {}
 
   async getSnapshot(): Promise<HouseholdSnapshot> {
@@ -40,6 +42,7 @@ export class HouseService {
     const storedMemberId = await this.repository.getActiveMemberId();
     const activeMember = members.find((member) => member.id === storedMemberId) ?? members[0];
     if (!activeMember) throw new Error('A Casa ativa não possui membros.');
+    await this.categories.ensureDefaultCategoriesForHouse(activeHouse.id);
     if (storedHouseId !== activeHouse.id) await this.repository.setActiveHouseId(activeHouse.id);
     if (storedMemberId !== activeMember.id)
       await this.repository.setActiveMemberId(activeMember.id);
@@ -71,7 +74,6 @@ export class HouseService {
     };
     await this.repository.saveHouse(house);
     await this.repository.saveMember(owner);
-    await this.seedCategories(house.id, now);
     await this.repository.setActiveHouseId(house.id);
     await this.repository.setActiveMemberId(owner.id);
     return this.getSnapshot();
@@ -193,23 +195,5 @@ export class HouseService {
     if (member.role !== 'owner')
       throw new Error('Somente proprietários podem fazer esta alteração.');
     return member;
-  }
-
-  private async seedCategories(houseId: string, now: string) {
-    await this.categories.initialize();
-    await Promise.all(
-      DEFAULT_CATEGORY_DEFINITIONS.map((definition) =>
-        this.categories.save({
-          id: `category-${houseId}-${definition.legacyKey}`,
-          houseId,
-          name: definition.name,
-          normalizedName: normalizeCatalogName(definition.name),
-          legacyKey: definition.legacyKey,
-          active: true,
-          createdAt: now,
-          updatedAt: now,
-        }),
-      ),
-    );
   }
 }

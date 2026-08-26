@@ -200,4 +200,48 @@ describe('catálogo de produtos e categorias', () => {
     expect(product).toMatchObject({ active: true, defaultUnit: 'unidade' });
     expect(session.items[1]?.productId).toBe(product?.id);
   });
+
+  it('cria item manual da Compra Rápida em Outros numa Casa online recém-inicializada', async () => {
+    const database = new CasaeLocalDatabase(`quick-online-${Date.now()}-${Math.random()}`, {
+      migrateLegacy: false,
+    });
+    const categoryRepository = new LocalCategoryRepository(database);
+    const productRepository = new LocalProductRepository(database);
+    const purchaseRepository = new LocalPurchaseRepository(database);
+    const shopping = new ShoppingListService(new LocalShoppingRepository(database));
+    const categories = new CategoryService(categoryRepository, productRepository);
+    const products = new ProductService(
+      productRepository,
+      categoryRepository,
+      purchaseRepository,
+      shopping,
+    );
+    const purchases = new PurchaseService(purchaseRepository, products);
+    const houseId = '842a92c9-7436-46aa-9667-01fa6dc4cf55';
+
+    await categories.ensureDefaultCategoriesForHouse(houseId);
+    await purchases.startPurchase({ id: 'store-online', name: 'Mercado online' }, 'quick', {
+      houseId,
+      memberId: 'user-online',
+      memberName: 'Ronnan',
+    });
+    const session = await purchases.addManualItem(
+      {
+        productName: 'Produto manual online',
+        quantity: 1,
+        unit: 'unidade',
+        unitPriceCents: 750,
+      },
+      houseId,
+    );
+
+    const outros = (await categoryRepository.list(houseId)).find(
+      (category) => category.legacyKey === 'outros',
+    );
+    const created = (await products.list(houseId)).find(
+      (product) => product.name === 'Produto manual online',
+    );
+    expect(created?.categoryId).toBe(outros?.id);
+    expect(session.items[0]?.productId).toBe(created?.id);
+  });
 });

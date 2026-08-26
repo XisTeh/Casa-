@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   OnlineHouseService,
   type ActiveHousePreference,
+  type OnlineHouseholdCache,
+  type OnlineHouseholdSnapshot,
 } from '../application/online-house-service';
 import type { HouseMemberRole } from '../domain/house';
 import type {
@@ -12,6 +14,22 @@ import type {
 } from '../domain/online-house';
 import type { OnlineHouseRepository } from '../domain/online-house-repository';
 import type { ProfileAvatarRepository } from '../domain/profile-avatar-repository';
+import { CategoryService } from '../application/category-service';
+import { LocalCategoryRepository } from '../infrastructure/catalog/LocalCategoryRepository';
+import { LocalProductRepository } from '../infrastructure/catalog/LocalProductRepository';
+import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
+
+function categoryCatalog(label: string) {
+  const database = new CasaeLocalDatabase(
+    `online-category-${label}-${Date.now()}-${Math.random()}`,
+    { migrateLegacy: false },
+  );
+  const repository = new LocalCategoryRepository(database);
+  return {
+    repository,
+    service: new CategoryService(repository, new LocalProductRepository(database)),
+  };
+}
 
 class MemoryPreference implements ActiveHousePreference {
   value?: string;
@@ -31,6 +49,16 @@ class MemoryAvatars implements ProfileAvatarRepository {
   async save(id: string, blob: Blob | null) {
     if (blob) this.values.set(id, blob);
     else this.values.delete(id);
+  }
+}
+
+class MemoryHouseholdCache implements OnlineHouseholdCache {
+  values = new Map<string, OnlineHouseholdSnapshot>();
+  get(userId: string) {
+    return this.values.get(userId);
+  }
+  set(userId: string, snapshot: OnlineHouseholdSnapshot) {
+    this.values.set(userId, snapshot);
   }
 }
 
@@ -182,6 +210,55 @@ describe('OnlineHouseService', () => {
     );
   });
 
+  it('inicializa as categorias locais para owner e convidado sem duplicar ou misturar Casas', async () => {
+    const repository = new FakeOnlineHouses();
+    const avatars = new MemoryAvatars();
+    const ownerCatalog = categoryCatalog('owner');
+    const ownerService = new OnlineHouseService(
+      repository,
+      avatars,
+      new MemoryPreference(),
+      new MemoryHouseholdCache(),
+      ownerCatalog.service,
+    );
+
+    const first = await ownerService.createHouse('user-a', 'Casa compartilhada');
+    const firstHouseId = first.activeHouse!.id;
+    expect(await ownerCatalog.repository.list(firstHouseId)).toHaveLength(11);
+    expect(
+      (await ownerCatalog.repository.list(firstHouseId)).find(
+        (category) => category.legacyKey === 'outros',
+      ),
+    ).toBeDefined();
+    await ownerCatalog.service.create('Importados', firstHouseId);
+    await ownerService.getSnapshot('user-a');
+    expect(await ownerCatalog.repository.list(firstHouseId)).toHaveLength(12);
+
+    const invite = await ownerService.createInvite(firstHouseId);
+    repository.currentUser = 'user-b';
+    const guestCatalog = categoryCatalog('guest');
+    const guestService = new OnlineHouseService(
+      repository,
+      avatars,
+      new MemoryPreference(),
+      new MemoryHouseholdCache(),
+      guestCatalog.service,
+    );
+    await guestService.acceptInvite('user-b', invite.token);
+    expect(await guestCatalog.repository.list(firstHouseId)).toHaveLength(11);
+    expect(
+      (await guestCatalog.repository.list(firstHouseId)).some(
+        (category) => category.name === 'Importados',
+      ),
+    ).toBe(false);
+
+    repository.currentUser = 'user-a';
+    const second = await ownerService.createHouse('user-a', 'Casa B');
+    expect(await ownerCatalog.repository.list(second.activeHouse!.id)).toHaveLength(11);
+    await ownerService.switchHouse('user-a', firstHouseId);
+    expect(await ownerCatalog.repository.list(firstHouseId)).toHaveLength(12);
+  });
+
   it('persiste foto global local e nome sem depender da Casa', async () => {
     const repository = new FakeOnlineHouses();
     const avatars = new MemoryAvatars();
@@ -195,5 +272,25 @@ describe('OnlineHouseService', () => {
     });
     expect(snapshot.activeMember?.displayName).toBe('Raabe Silva');
     expect(await snapshot.activeMember?.avatarBlob?.text()).toBe('avatar');
+  });
+
+  it('reabre a última Casa conhecida quando a rede falha sem inventar nova membership', async () => {
+    const repository = new FakeOnlineHouses();
+    const cache = new MemoryHouseholdCache();
+    const service = new OnlineHouseService(
+      repository,
+      new MemoryAvatars(),
+      new MemoryPreference(),
+      cache,
+    );
+    const online = await service.createHouse('user-a', 'Casa A');
+    expect(online.activeHouse?.id).toBe('house-1');
+    repository.getProfile = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+
+    const restored = await service.getSnapshot('user-a');
+    expect(restored.activeHouse?.id).toBe('house-1');
+    expect(restored.activeMember?.id).toBe('user-a');
   });
 });

@@ -3,8 +3,9 @@
 ## Escopo desta etapa
 
 Quando `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão configuradas, o Casaê usa Supabase para
-conta, perfil global, Casas, memberships e convites. Lista, compras, catálogo, mercados, histórico,
-preços, gastos, orçamento, recorrência e relatórios continuam nos repositories IndexedDB atuais.
+conta, perfil global, Casas, memberships, convites e sincronização da Lista. Compras, catálogo,
+mercados, histórico, preços, gastos, orçamento, recorrência e relatórios continuam nos repositories
+IndexedDB atuais.
 
 Sem essas variáveis, a mesma aplicação inicia em modo local. Esse fallback existe para desenvolvimento
 e para preservar a base instalada; ele não cria uma segunda implementação dos módulos operacionais.
@@ -27,8 +28,8 @@ Supabase Auth + PostgreSQL     IndexedDB profileAvatars
 
 Os componentes nunca chamam `supabase.from(...)`. `SupabaseAuthRepository` encapsula Auth e
 `SupabaseHouseRepository` encapsula tabelas/RPCs. `OnlineHouseProvider` entrega o mesmo contrato
-React usado pelo restante do app, de modo que os providers de Lista, Produtos, Compras e Gastos
-continuam locais e apenas recebem o UUID da Casa ativa.
+React usado pelo restante do app. A Lista usa `OfflineFirstShoppingRepository`; os providers de
+Produtos, Compras e Gastos continuam locais e apenas recebem o UUID da Casa ativa.
 
 ## Banco e migrations
 
@@ -37,7 +38,9 @@ As migrations em `supabase/migrations` devem ser aplicadas na ordem do nome:
 1. `202608240001_foundation.sql`: `profiles`, `houses`, `house_members`, trigger de perfil e funções
    privadas para RLS;
 2. `202608260001_online_identity.sql`: perfil global final, status/ID da membership, convites,
-   RPCs transacionais, grants mínimos e policies finais.
+   RPCs transacionais, grants mínimos e policies finais;
+3. `202608260002_shopping_list_sync.sql`: Lista remota, tombstones, índices, RLS, RPC idempotente e
+   publicação Realtime.
 
 ### Tabelas
 
@@ -47,6 +50,8 @@ As migrations em `supabase/migrations` devem ser aplicadas na ordem do nome:
   usuário duas vezes na mesma Casa;
 - `house_invites`: guarda somente SHA-256 do token, criador, validade e consumo. O token aberto só é
   devolvido uma vez pela RPC de criação.
+- `shopping_items`: UUID criado no cliente, Casa, snapshots da Lista, autoria, timestamps e
+  `deleted_at`. `product_id` e `category_id` são opcionais porque Catálogo ainda não foi migrado.
 
 `create_house` insere Casa e owner membership na mesma transação PostgreSQL. `create_house_invite`
 exige owner e gera 96 bits aleatórios. `accept_house_invite` bloqueia a linha, valida expiração/uso,
@@ -76,11 +81,20 @@ O UUID da Casa ativa fica em `localStorage` sob `casae.activeHouseId`; é apenas
 Toda autorização permanece no PostgreSQL/RLS. Uma preferência apontando para Casa inacessível é
 descartada e substituída pela primeira Casa retornada com segurança.
 
+A última fotografia autenticada da Casa ativa também é guardada localmente para que uma sessão já
+restaurada consiga abrir o PWA sem rede. Ela só é usada em falha de conexão; quando o servidor está
+disponível, a membership retornada por ele volta a ser a autoridade.
+
 ## RLS e isolamento
 
-RLS está ativo nas quatro tabelas públicas. Usuários autenticados só leem Casas e memberships em que
+RLS está ativo nas cinco tabelas públicas. Usuários autenticados só leem Casas, memberships e itens em que
 possuem membership ativa. Perfis só são visíveis ao próprio usuário ou a colegas de Casa. Apenas
 owners atualizam Casas e consultam metadados de convites.
+
+Em `shopping_items`, SELECT, INSERT, UPDATE e DELETE exigem membership ativa na mesma `house_id`.
+INSERT exige `created_by` e `updated_by` iguais a `auth.uid()`; UPDATE não possui grant para trocar
+`house_id` ou autoria de criação. O frontend usa soft delete pela RPC, embora DELETE também esteja
+protegido por RLS.
 
 Mutações sensíveis de Casa, membership e convite não recebem grants diretos: passam por funções
 `security definer`, todas com `search_path = ''`, relações qualificadas e execução concedida somente
@@ -101,7 +115,7 @@ conta por aproximação.
 ## Configuração do zero
 
 1. Crie um projeto em <https://supabase.com/dashboard>.
-2. No projeto, abra **Project Settings → API** e copie a Project URL e a chave pública
+2. No projeto, abra **Project Settings → Data API** (em algumas interfaces: **Settings → API**) e copie a Project URL e a chave pública
    `anon`/`publishable`. Nunca copie `service_role` ou uma secret key para o frontend.
 3. Copie `.env.example` para `.env` e substitua os dois valores.
 4. Instale o Supabase CLI conforme a documentação oficial e, na raiz do Casaê, execute:

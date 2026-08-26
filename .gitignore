@@ -11,6 +11,7 @@ temp/
 .env
 .env.*
 !.env.example
+!.env.e2e
 .DS_Store
 *.local
 *.log
@@ -22,3 +23,8 @@ android/app/build/
 
 # Projeto preexistente e independente preservado no workspace.
 /Aldebaran XVIII/
+
+.vercel
+.env*
+!.env.e2e
+supabase/.temp/

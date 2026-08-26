@@ -1,4 +1,8 @@
-import { normalizeCatalogName, type Category } from '../domain/catalog';
+import {
+  DEFAULT_CATEGORY_DEFINITIONS,
+  normalizeCatalogName,
+  type Category,
+} from '../domain/catalog';
 import type { CategoryRepository } from '../domain/category-repository';
 import type { ProductRepository } from '../domain/product-repository';
 import { HOUSE_ID } from '../domain/shopping-list';
@@ -18,6 +22,11 @@ export class CategoryService {
   async list(houseId = HOUSE_ID) {
     await this.repository.initialize();
     return this.repository.list(houseId);
+  }
+
+  async ensureDefaultCategoriesForHouse(houseId = HOUSE_ID) {
+    await this.repository.initialize();
+    return this.repository.ensureDefaults(houseId, DEFAULT_CATEGORY_DEFINITIONS);
   }
 
   async create(name: string, houseId = HOUSE_ID) {

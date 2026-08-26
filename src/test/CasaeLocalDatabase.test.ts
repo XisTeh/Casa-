@@ -137,7 +137,8 @@ async function createPopulatedVersionThreeDatabase(name: string) {
           (store) =>
             store !== CASAE_STORES.houses &&
             store !== CASAE_STORES.houseMembers &&
-            store !== CASAE_STORES.profileAvatars,
+            store !== CASAE_STORES.profileAvatars &&
+            store !== CASAE_STORES.syncOutbox,
         ),
         'readwrite',
       );
@@ -310,6 +311,7 @@ describe('CasaeLocalDatabase', () => {
     expect(native?.objectStoreNames.contains(CASAE_STORES.houses)).toBe(true);
     expect(native?.objectStoreNames.contains(CASAE_STORES.houseMembers)).toBe(true);
     expect(native?.objectStoreNames.contains(CASAE_STORES.profileAvatars)).toBe(true);
+    expect(native?.objectStoreNames.contains(CASAE_STORES.syncOutbox)).toBe(true);
     expect(await houses.listHouses()).toMatchObject([{ id: LEGACY_HOUSE_ID }]);
     expect(await houses.listMembers(LEGACY_HOUSE_ID)).toMatchObject([
       { displayName: LEGACY_MEMBER_NAME, role: 'owner' },

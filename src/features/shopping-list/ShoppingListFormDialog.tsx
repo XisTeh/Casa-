@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '../../components/Button/Button';
-import type { Category } from '../../domain/catalog';
+import { resolveShoppingCategory, type Category } from '../../domain/catalog';
 import {
   SHOPPING_PRIORITIES,
   SHOPPING_UNITS,
@@ -24,8 +24,7 @@ function getInitialValues(
   item: ShoppingListItem | null | undefined,
   categories: Category[],
 ): FormValues {
-  const defaultCategory =
-    categories.find((category) => category.legacyKey === 'mercearia') ?? categories[0];
+  const defaultCategory = resolveShoppingCategory(categories, 'mercearia') ?? categories[0];
   return {
     productName: item?.productName ?? '',
     quantity: item?.quantity ?? 1,

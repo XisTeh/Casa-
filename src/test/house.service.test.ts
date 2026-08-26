@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { HouseService } from '../application/house-service';
+import { CategoryService } from '../application/category-service';
 import { LEGACY_HOUSE_ID } from '../domain/house';
 import { LocalCategoryRepository } from '../infrastructure/catalog/LocalCategoryRepository';
+import { LocalProductRepository } from '../infrastructure/catalog/LocalProductRepository';
 import { LocalHouseRepository } from '../infrastructure/house/LocalHouseRepository';
 import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
 
@@ -10,9 +12,14 @@ function serviceFor(label: string) {
     migrateLegacy: false,
   });
   const repository = new LocalHouseRepository(database);
+  const categoryRepository = new LocalCategoryRepository(database);
   return {
     repository,
-    service: new HouseService(repository, new LocalCategoryRepository(database)),
+    categories: categoryRepository,
+    service: new HouseService(
+      repository,
+      new CategoryService(categoryRepository, new LocalProductRepository(database)),
+    ),
   };
 }
 
@@ -53,7 +60,7 @@ describe('HouseService', () => {
   });
 
   it('cria segunda Casa vazia, torna o membro atual owner e persiste a troca', async () => {
-    const { repository, service } = serviceFor('second-house');
+    const { repository, service, categories } = serviceFor('second-house');
     const initial = await service.getSnapshot();
     const created = await service.createHouse('Apartamento 301', initial.activeMember);
 
@@ -65,9 +72,11 @@ describe('HouseService', () => {
     });
     expect(created.activeMember.houseId).toBe(created.activeHouse.id);
     expect(await repository.getActiveHouseId()).toBe(created.activeHouse.id);
+    expect(await categories.list(created.activeHouse.id)).toHaveLength(11);
 
     const restored = await service.getSnapshot();
     expect(restored.activeHouse.id).toBe(created.activeHouse.id);
+    expect(await categories.list(created.activeHouse.id)).toHaveLength(11);
     const original = await service.switchHouse(initial.activeHouse.id);
     expect(original.activeHouse.id).toBe(initial.activeHouse.id);
   });

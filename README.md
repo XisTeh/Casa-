@@ -2,15 +2,16 @@
 
 Casaê é uma aplicação doméstica para organizar a Lista, compras, Produtos da Casa, Mercados e
 Histórico. A fundação online opcional usa Supabase Auth para contas reais e PostgreSQL/RLS para
-perfis, Casas, memberships e convites. Os dados operacionais continuam no IndexedDB `casae-local`
-e sobrevivem ao reload; sua migração e sincronização serão etapas posteriores.
+perfis, Casas, memberships e convites. A Lista de Compras é offline-first: usa o IndexedDB
+`casae-local` como fonte imediata, sincroniza com o Supabase por outbox e recebe mudanças por
+Realtime. Os demais dados operacionais continuam somente locais e sobrevivem ao reload.
 
 ## Stack e execução
 
 - React 19, TypeScript strict, Vite 8 e React Router
 - PWA com `vite-plugin-pwa` e empacotamento Capacitor já existente
 - IndexedDB atrás de contratos de repository
-- Supabase Auth/PostgreSQL atrás de repositories isolados para identidade e Casas
+- Supabase Auth/PostgreSQL/Realtime atrás de repositories isolados para identidade, Casas e Lista
 - Vitest, Testing Library, Playwright, ESLint e Prettier
 
 Requer Node.js 24 (ou uma versão suportada pelo Vite 8) e npm 11+.
@@ -39,7 +40,7 @@ Directory. O `vercel.json` preserva arquivos reais da PWA e encaminha somente as
 ## Módulos funcionais
 
 - Dashboard conectado à Lista, às compras concluídas e ao orçamento mensal real
-- Lista com CRUD, busca, filtros e vínculo opcional por `productId`
+- Lista com CRUD offline, busca, filtros, outbox, Realtime e vínculo local opcional por `productId`
 - Comprar usando a Lista e Compra Rápida
 - Produtos da Casa com cadastro, edição, favoritos, inativos, último preço e recorrência manual
 - Categorias da Casa com criação, edição, ativação e proteção quando estão em uso
@@ -70,7 +71,7 @@ categoria conhecida.
 
 ## Persistência e migração
 
-O IndexedDB `casae-local` está na versão 6 e contém:
+O IndexedDB `casae-local` está na versão 7 e contém:
 
 - `shoppingItems`
 - `purchaseSessions`
@@ -83,6 +84,13 @@ O IndexedDB `casae-local` está na versão 6 e contém:
 - `houseMembers`
 - `profileAvatars`
 - `metadata`
+- `syncOutbox`
+
+No modo online, todas as alterações da Lista são gravadas primeiro em `shoppingItems` e, na mesma
+transação, compactadas em uma entrada persistente de `syncOutbox`. A fila é separada por Casa e
+pela conta que originou a alteração. Abertura do app, evento `online`, retorno à aba e retry com
+backoff retomam o envio. Realtime reduz a latência entre membros, mas a reconciliação remota
+continua sendo a fonte de consistência. Veja [Sincronização da Lista](docs/shopping-list-sync.md).
 
 A migração `catalog-products-categories-v2` é transacional e idempotente. Ela preserva os registros
 anteriores, cria as categorias iniciais uma única vez e reconcilia Lista/Histórico usando primeiro um
@@ -150,6 +158,6 @@ e2e/               fluxos ponta a ponta e breakpoints
 docs/               decisões de arquitetura
 ```
 
-A identidade multiusuário e as Casas já possuem implementations Supabase. A próxima integração deve
-implementar os repositories operacionais remotos, mantendo `houseId`, IDs estáveis e snapshots e
-definindo sincronização/conflitos sem descartar o modo offline.
+A identidade multiusuário, as Casas e a Lista já possuem implementations Supabase. Produtos,
+Categorias, Mercados, compras, Histórico, Gastos, Orçamento, relatórios, recorrência e fotos continuam
+locais até suas etapas específicas de migração.

@@ -94,6 +94,7 @@ async function mockSupabase(page: Page, hasHouse: boolean) {
         },
       ]);
     }
+    if (url.pathname.endsWith('/rest/v1/shopping_items')) return json([]);
     if (url.pathname.endsWith('/rest/v1/rpc/create_house_invite')) {
       return json({
         token: 'A1B2-C3D4-E5F6-A7B8-C9D0-E1F2',
@@ -102,6 +103,17 @@ async function mockSupabase(page: Page, hasHouse: boolean) {
     }
     return json({});
   });
+}
+
+async function dismissLegacyMigration(page: Page) {
+  const dialog = page.getByRole('dialog', { name: 'Adicionar itens locais?' });
+  try {
+    await dialog.waitFor({ state: 'visible', timeout: 2_000 });
+    await dialog.getByRole('button', { name: 'Agora não' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+  } catch {
+    // Dispositivos sem dados locais não exibem a decisão de migração.
+  }
 }
 
 test('login, cadastro e recuperação permanecem responsivos', async ({ page }) => {
@@ -137,20 +149,39 @@ test('onboarding sem Casa permanece responsivo', async ({ page }) => {
   }
 });
 
-test('Configurações, membros, Casas e convite usam a identidade remota', async ({ page }) => {
+test('Lista, Configurações, membros, Casas e convite usam a identidade remota', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
   await installSession(page);
   await mockSupabase(page, true);
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/configuracoes');
     await expect(page.getByRole('heading', { name: 'Casa Online' })).toBeVisible();
+    await dismissLegacyMigration(page);
     await expect(page.getByText('raabe@casae.test')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Raabe Online', level: 2 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
       await page.evaluate(() => document.documentElement.clientWidth),
     );
+    await page.goto('/lista');
+    await expect(page.getByRole('heading', { name: 'Lista de compras' })).toBeVisible();
+    await dismissLegacyMigration(page);
+    await page.getByRole('button', { name: 'Adicionar produto' }).first().click();
+    const itemDialog = page.getByRole('dialog', { name: 'Adicionar produto' });
+    const categorySelect = itemDialog.getByRole('combobox', { name: /Categoria/ });
+    await expect(categorySelect.locator('option')).toHaveCount(11);
+    await expect(categorySelect).toHaveValue('category-house-a-mercearia');
+    await itemDialog.getByRole('button', { name: 'Cancelar' }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+      await page.evaluate(() => document.documentElement.clientWidth),
+    );
   }
   await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/configuracoes');
+  await expect(page.getByRole('heading', { name: 'Casa Online' })).toBeVisible();
+  await dismissLegacyMigration(page);
   await page.getByRole('button', { name: 'Convidar membro' }).click();
   const dialog = page.getByRole('dialog', { name: /Convidar para Casa Online/ });
   await expect(dialog.getByText('A1B2-C3D4-E5F6-A7B8-C9D0-E1F2')).toBeVisible();

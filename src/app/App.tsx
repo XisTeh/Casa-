@@ -25,7 +25,11 @@ import { SettingsPage } from '../features/settings/SettingsPage';
 import type { AuthService } from '../application/auth-service';
 import type { OnlineHouseService } from '../application/online-house-service';
 import { isSupabaseConfigured } from '../lib/env';
-import { createDefaultAuthService, createDefaultOnlineHouseService } from './app-services';
+import {
+  createDefaultAuthService,
+  createDefaultOnlineHouseService,
+  createDefaultOnlineShoppingListService,
+} from './app-services';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { useAuth } from '../features/auth/AuthContext';
 import { AuthPage } from '../features/auth/AuthPage';
@@ -141,6 +145,15 @@ function RemoteApplication({
 }) {
   const auth = useAuth();
   const location = useLocation();
+  const authenticatedUserId = auth.session?.user.id;
+  const remoteShoppingListService = useMemo(
+    () =>
+      props.shoppingListService ??
+      (authenticatedUserId
+        ? createDefaultOnlineShoppingListService(authenticatedUserId)
+        : undefined),
+    [authenticatedUserId, props.shoppingListService],
+  );
   if (auth.initializing) {
     return (
       <main className="auth-page">
@@ -168,7 +181,7 @@ function RemoteApplication({
       service={onlineHouseService}
       userId={auth.session.user.id}
     >
-      <HouseScopedApplication {...props} />
+      <HouseScopedApplication {...props} shoppingListService={remoteShoppingListService} />
     </OnlineHouseProvider>
   );
 }

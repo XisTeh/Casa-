@@ -1,5 +1,6 @@
 import {
   normalizeCatalogName,
+  resolveShoppingCategory,
   type NewProduct,
   type Product,
   type ProductUpdate,
@@ -209,9 +210,7 @@ export class ProductService {
         : this.patchState(exact[0]!.id, { active: true }, houseId);
     }
     const categories = await this.categories.list(houseId);
-    const category =
-      categories.find((candidate) => candidate.legacyKey === input.category) ??
-      categories.find((candidate) => candidate.legacyKey === 'outros');
+    const category = resolveShoppingCategory(categories, input.category);
     if (!category) throw new Error('A categoria Outros não está disponível.');
     return this.createWithId(
       input.productId ?? createId('product'),

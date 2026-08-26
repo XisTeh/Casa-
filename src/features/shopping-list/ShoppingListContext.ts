@@ -3,12 +3,14 @@ import type {
   NewShoppingListItem,
   ShoppingListItem,
   ShoppingListItemUpdate,
+  ShoppingSyncStatus,
 } from '../../domain/shopping-list';
 
 export type ShoppingListContextValue = {
   items: ShoppingListItem[];
   isLoading: boolean;
   error: string | null;
+  syncStatus: ShoppingSyncStatus;
   createItem: (input: NewShoppingListItem) => Promise<ShoppingListItem>;
   updateItem: (id: string, changes: ShoppingListItemUpdate) => Promise<ShoppingListItem>;
   removeItem: (id: string) => Promise<void>;

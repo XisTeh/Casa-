@@ -26,6 +26,10 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
+    env: {
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_ANON_KEY: '',
+    },
     globals: true,
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['e2e/**', 'Aldebaran XVIII/**'],

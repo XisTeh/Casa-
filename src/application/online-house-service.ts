@@ -2,10 +2,45 @@ import type { House, HouseMember, HouseMemberRole } from '../domain/house';
 import type { OnlineHouseRepository } from '../domain/online-house-repository';
 import type { ProfileAvatarRepository } from '../domain/profile-avatar-repository';
 import type { UserProfile } from '../domain/online-house';
+import type { DefaultCategoryInitializer } from './house-service';
 
 export interface ActiveHousePreference {
   get(): string | undefined;
   set(houseId: string): void;
+}
+
+export interface OnlineHouseholdCache {
+  get(userId: string): OnlineHouseholdSnapshot | undefined;
+  set(userId: string, snapshot: OnlineHouseholdSnapshot): void;
+}
+
+export class BrowserOnlineHouseholdCache implements OnlineHouseholdCache {
+  private key(userId: string) {
+    return `casae.onlineHousehold.${userId}`;
+  }
+
+  get(userId: string) {
+    if (typeof localStorage === 'undefined') return undefined;
+    const raw = localStorage.getItem(this.key(userId));
+    if (!raw) return undefined;
+    try {
+      const snapshot = JSON.parse(raw) as OnlineHouseholdSnapshot;
+      return snapshot?.profile?.id === userId && Array.isArray(snapshot.houses)
+        ? snapshot
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  set(userId: string, snapshot: OnlineHouseholdSnapshot) {
+    if (typeof localStorage === 'undefined') return;
+    const serializable = {
+      ...snapshot,
+      members: snapshot.members.map((member) => ({ ...member, avatarBlob: undefined })),
+    };
+    localStorage.setItem(this.key(userId), JSON.stringify(serializable));
+  }
 }
 
 export class BrowserActiveHousePreference implements ActiveHousePreference {
@@ -36,14 +71,38 @@ function validName(value: string, label: string) {
   return clean;
 }
 
+function isOfflineOrNetworkFailure(error: unknown) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
+  const message = error instanceof Error ? error.message.toLocaleLowerCase('en-US') : '';
+  return error instanceof TypeError || /fetch|network|offline|connection/.test(message);
+}
+
 export class OnlineHouseService {
   constructor(
     private readonly repository: OnlineHouseRepository,
     private readonly avatars: ProfileAvatarRepository,
     private readonly preference: ActiveHousePreference = new BrowserActiveHousePreference(),
+    private readonly cache: OnlineHouseholdCache = new BrowserOnlineHouseholdCache(),
+    private readonly categories?: DefaultCategoryInitializer,
   ) {}
 
   async getSnapshot(userId: string): Promise<OnlineHouseholdSnapshot> {
+    try {
+      const snapshot = await this.getRemoteSnapshot(userId);
+      await this.ensureSnapshotCategories(snapshot);
+      this.cache.set(userId, snapshot);
+      return snapshot;
+    } catch (error) {
+      const cached = this.cache.get(userId);
+      if (cached && isOfflineOrNetworkFailure(error)) {
+        await this.ensureSnapshotCategories(cached);
+        return cached;
+      }
+      throw error;
+    }
+  }
+
+  private async getRemoteSnapshot(userId: string): Promise<OnlineHouseholdSnapshot> {
     const [profile, remoteHouses] = await Promise.all([
       this.repository.getProfile(userId),
       this.repository.listHouses(userId),
@@ -136,5 +195,11 @@ export class OnlineHouseService {
 
   createInvite(houseId: string) {
     return this.repository.createInvite(houseId);
+  }
+
+  private async ensureSnapshotCategories(snapshot: OnlineHouseholdSnapshot) {
+    if (snapshot.activeHouse) {
+      await this.categories?.ensureDefaultCategoriesForHouse(snapshot.activeHouse.id);
+    }
   }
 }

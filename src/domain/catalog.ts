@@ -58,10 +58,12 @@ export type ProductWithLastPurchase = Product & {
   lastPurchase?: ProductLastPurchase;
 };
 
-export const DEFAULT_CATEGORY_DEFINITIONS: ReadonlyArray<{
+export type DefaultCategoryDefinition = {
   name: string;
   legacyKey: ShoppingCategory;
-}> = [
+};
+
+export const DEFAULT_CATEGORY_DEFINITIONS: ReadonlyArray<DefaultCategoryDefinition> = [
   { name: 'Mercearia', legacyKey: 'mercearia' },
   { name: 'Hortifruti', legacyKey: 'hortifruti' },
   { name: 'Laticínios', legacyKey: 'laticinios' },
@@ -74,6 +76,23 @@ export const DEFAULT_CATEGORY_DEFINITIONS: ReadonlyArray<{
   { name: 'Pet', legacyKey: 'pet' },
   { name: 'Outros', legacyKey: 'outros' },
 ];
+
+export function resolveCategoryByLegacyKey(
+  categories: ReadonlyArray<Category>,
+  legacyKey: ShoppingCategory,
+) {
+  return categories.find((category) => category.legacyKey === legacyKey);
+}
+
+export function resolveShoppingCategory(
+  categories: ReadonlyArray<Category>,
+  legacyKey?: ShoppingCategory,
+) {
+  return (
+    (legacyKey ? resolveCategoryByLegacyKey(categories, legacyKey) : undefined) ??
+    resolveCategoryByLegacyKey(categories, 'outros')
+  );
+}
 
 export function normalizeCatalogName(value: string) {
   return value

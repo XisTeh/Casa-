@@ -9,6 +9,7 @@ import {
   HOUSE_ID,
   initialShoppingListSeed,
   type ShoppingListItem,
+  type ShoppingSyncOutboxEntry,
 } from '../../domain/shopping-list';
 import type { Store } from '../../domain/store';
 import type { HouseBudget } from '../../domain/budget';
@@ -22,7 +23,7 @@ import {
 } from '../../domain/house';
 
 export const CASAE_DATABASE_NAME = 'casae-local';
-export const CASAE_DATABASE_VERSION = 6;
+export const CASAE_DATABASE_VERSION = 7;
 
 export const ACTIVE_HOUSE_METADATA_KEY = 'activeHouseId';
 export const ACTIVE_MEMBER_METADATA_KEY = 'activeMemberId';
@@ -39,6 +40,7 @@ export const CASAE_STORES = {
   houseMembers: 'houseMembers',
   profileAvatars: 'profileAvatars',
   metadata: 'metadata',
+  syncOutbox: 'syncOutbox',
 } as const;
 
 const LEGACY_SHOPPING_DATABASE = 'casae-shopping-list';
@@ -77,6 +79,7 @@ export type CasaeMemoryDatabase = {
   houseMembers: Map<string, HouseMember>;
   profileAvatars: Map<string, LocalProfileAvatar>;
   metadata: Map<string, LocalMetadata>;
+  syncOutbox: Map<string, ShoppingSyncOutboxEntry>;
 };
 
 export type LegacyDatabaseSnapshot = {
@@ -148,6 +151,7 @@ function createMemoryDatabase(): CasaeMemoryDatabase {
       [ACTIVE_HOUSE_METADATA_KEY, { key: ACTIVE_HOUSE_METADATA_KEY, value: house.id }],
       [ACTIVE_MEMBER_METADATA_KEY, { key: ACTIVE_MEMBER_METADATA_KEY, value: member.id }],
     ]),
+    syncOutbox: new Map(),
   };
 }
 
@@ -220,6 +224,12 @@ function openCasaeDatabase(name: string): Promise<IDBDatabase> {
 
       if (!database.objectStoreNames.contains(CASAE_STORES.metadata)) {
         database.createObjectStore(CASAE_STORES.metadata, { keyPath: 'key' });
+      }
+
+      if (!database.objectStoreNames.contains(CASAE_STORES.syncOutbox)) {
+        const store = database.createObjectStore(CASAE_STORES.syncOutbox, { keyPath: 'id' });
+        store.createIndex('houseId', 'houseId', { unique: false });
+        store.createIndex('houseAndEntity', ['houseId', 'entityId'], { unique: true });
       }
 
       if (housesStore && membersStore) {

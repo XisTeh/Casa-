@@ -86,6 +86,54 @@ export type Database = {
         Update: { used_at?: string | null; used_by?: string | null };
         Relationships: [];
       };
+      shopping_items: {
+        Row: {
+          id: string;
+          house_id: string;
+          product_id: string | null;
+          category_id: string | null;
+          name: string;
+          normalized_name: string;
+          quantity: number;
+          unit: string;
+          category_key: string;
+          category_name: string | null;
+          preferred_brand: string;
+          notes: string;
+          priority: string;
+          status: string;
+          added_by_name: string;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id: string;
+          house_id: string;
+          product_id?: string | null;
+          category_id?: string | null;
+          name: string;
+          normalized_name: string;
+          quantity: number;
+          unit: string;
+          category_key: string;
+          category_name?: string | null;
+          preferred_brand?: string;
+          notes?: string;
+          priority?: string;
+          status?: string;
+          added_by_name: string;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['shopping_items']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -106,6 +154,29 @@ export type Database = {
       remove_house_member: {
         Args: { target_house_id: string; target_user_id: string };
         Returns: undefined;
+      };
+      apply_shopping_item: {
+        Args: {
+          item_id: string;
+          target_house_id: string;
+          target_product_id: string | null;
+          target_category_id: string | null;
+          item_name: string;
+          item_normalized_name: string;
+          item_quantity: number;
+          item_unit: string;
+          item_category_key: string;
+          item_category_name: string;
+          item_preferred_brand: string;
+          item_notes: string;
+          item_priority: string;
+          item_status: string;
+          item_added_by_name: string;
+          item_created_at: string;
+          item_updated_at: string;
+          item_deleted_at: string | null;
+        };
+        Returns: Database['public']['Tables']['shopping_items']['Row'][];
       };
     };
     Enums: { house_role: 'owner' | 'member'; house_member_status: 'active' | 'inactive' };

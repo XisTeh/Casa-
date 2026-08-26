@@ -7,6 +7,7 @@ import {
 } from '../domain/shopping-list';
 import type { ActiveHousehold } from '../domain/house';
 import type { ShoppingListRepository } from '../domain/shopping-list-repository';
+import { isOnlineShoppingListRepository } from '../domain/shopping-list-repository';
 
 function createId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -82,6 +83,7 @@ export class ShoppingListService {
       addedBy: actor.memberName,
       addedByMemberId: actor.memberId,
       addedByNameSnapshot: actor.memberName,
+      updatedByMemberId: actor.memberId,
       status: 'pending',
       createdAt: now,
       updatedAt: now,
@@ -92,19 +94,43 @@ export class ShoppingListService {
     return this.repository.create(item);
   }
 
-  async update(id: string, changes: ShoppingListItemUpdate, houseId = HOUSE_ID) {
+  async update(id: string, changes: ShoppingListItemUpdate, houseId = HOUSE_ID, actorId?: string) {
     validateInput(changes);
     await this.repository.initialize();
-    return this.repository.update(houseId, id, normalizeUpdate(changes));
+    return this.repository.update(houseId, id, normalizeUpdate(changes), actorId);
   }
 
-  async remove(id: string, houseId = HOUSE_ID) {
+  async remove(id: string, houseId = HOUSE_ID, actorId?: string) {
     await this.repository.initialize();
-    return this.repository.remove(houseId, id);
+    return this.repository.remove(houseId, id, actorId);
   }
 
   async removeMany(ids: string[], houseId = HOUSE_ID) {
     await this.repository.initialize();
     await Promise.all([...new Set(ids)].map((id) => this.repository.remove(houseId, id)));
+  }
+
+  subscribe(
+    houseId: string,
+    onItemsChanged: () => void,
+    onStatusChanged: Parameters<
+      import('../domain/shopping-list-repository').OnlineShoppingListRepository['subscribe']
+    >[2],
+  ) {
+    return isOnlineShoppingListRepository(this.repository)
+      ? this.repository.subscribe(houseId, onItemsChanged, onStatusChanged)
+      : () => undefined;
+  }
+
+  async getSyncStatus(houseId: string) {
+    return isOnlineShoppingListRepository(this.repository)
+      ? this.repository.getStatus(houseId)
+      : ({ state: 'local', pending: 0 } as const);
+  }
+
+  async getLegacyMigration(houseId: string) {
+    return isOnlineShoppingListRepository(this.repository)
+      ? this.repository.getLegacyMigration(houseId)
+      : null;
   }
 }

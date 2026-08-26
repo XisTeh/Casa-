@@ -36,7 +36,7 @@ export class LocalShoppingRepository implements ShoppingListRepository {
     if (!nativeDatabase) {
       return sortItems(
         [...this.database.getMemoryDatabase().shoppingItems.values()]
-          .filter((item) => item.houseId === houseId)
+          .filter((item) => item.houseId === houseId && !item.deletedAt)
           .map(cloneItem),
       );
     }
@@ -49,7 +49,7 @@ export class LocalShoppingRepository implements ShoppingListRepository {
         .getAll(IDBKeyRange.only(houseId)) as IDBRequest<ShoppingListItem[]>,
     );
     await transactionToPromise(transaction);
-    return sortItems(items.map(cloneItem));
+    return sortItems(items.filter((item) => !item.deletedAt).map(cloneItem));
   }
 
   async create(item: ShoppingListItem): Promise<ShoppingListItem> {

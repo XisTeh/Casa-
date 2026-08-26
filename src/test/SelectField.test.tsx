@@ -12,9 +12,7 @@ describe('SelectField', () => {
   it('abre com o visual customizado e seleciona uma opção', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(
-      <SelectField label="Mercado" onChange={onChange} options={options} value="" />,
-    );
+    render(<SelectField label="Mercado" onChange={onChange} options={options} value="" />);
 
     await user.click(screen.getByRole('combobox', { name: 'Mercado' }));
     expect(screen.getByRole('listbox', { name: 'Mercado' })).toBeVisible();
@@ -27,9 +25,7 @@ describe('SelectField', () => {
   it('permite selecionar pelo teclado e devolve o foco ao controle', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(
-      <SelectField label="Mercado" onChange={onChange} options={options} value="" />,
-    );
+    render(<SelectField label="Mercado" onChange={onChange} options={options} value="" />);
 
     const trigger = screen.getByRole('combobox', { name: 'Mercado' });
     trigger.focus();

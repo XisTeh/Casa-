@@ -27,6 +27,7 @@ import { JoinHouseDialog } from './JoinHouseDialog';
 import type { HouseInviteReceipt } from '../../domain/online-house';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
+import { useShoppingList } from '../shopping-list/ShoppingListContext';
 
 type DialogState =
   'edit-house' | 'create-house' | 'add-member' | 'edit-profile' | HouseMember | null;
@@ -35,6 +36,7 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' });
 export function SettingsPage() {
   const household = useHousehold();
   const auth = useOptionalAuth();
+  const { syncStatus } = useShoppingList();
   const { houses, activeHouse, members, activeMember } = household;
   const [dialog, setDialog] = useState<DialogState>(null);
   const [removing, setRemoving] = useState<HouseMember | null>(null);
@@ -239,9 +241,20 @@ export function SettingsPage() {
               <Mail aria-hidden="true" size={17} /> {household.accountEmail}
             </p>
             <small>
-              Sua identidade e suas Casas usam uma sessão protegida. Lista, compras, produtos,
-              histórico e gastos ainda permanecem neste dispositivo nesta etapa.
+              Sua identidade, suas Casas e a Lista de Compras usam uma sessão protegida. Os demais
+              módulos continuam locais neste dispositivo.
             </small>
+            <p className="settings-sync-status" role="status">
+              {syncStatus.state === 'offline'
+                ? syncStatus.pending
+                  ? `Offline · ${syncStatus.pending} alterações pendentes`
+                  : 'Offline'
+                : syncStatus.state === 'syncing'
+                  ? 'Sincronizando…'
+                  : syncStatus.pending
+                    ? `${syncStatus.pending} alterações pendentes`
+                    : 'Sincronizado'}
+            </p>
             {auth && (
               <Button onClick={() => void auth.signOut()} variant="secondary">
                 <LogOut aria-hidden="true" size={17} /> Sair da conta

@@ -58,6 +58,38 @@ export type ShoppingListItem = {
   /** Compatibilidade com dados criados antes do catálogo central. */
   houseProductId?: string;
   barcode?: string;
+  /** Tombstone local/remoto. Itens excluídos continuam persistidos para sincronização. */
+  deletedAt?: string;
+  /** Identidade da última pessoa que alterou o registro no modo online. */
+  updatedByMemberId?: string;
+};
+
+export type ShoppingSyncOperation = 'upsert' | 'delete';
+
+export type ShoppingSyncOutboxEntry = {
+  id: string;
+  entityType: 'shopping-item';
+  entityId: string;
+  houseId: string;
+  actorId: string;
+  operation: ShoppingSyncOperation;
+  payload: ShoppingListItem;
+  version: string;
+  createdAt: string;
+  attempts: number;
+  lastAttemptAt?: string;
+  lastError?: string;
+  nextAttemptAt?: string;
+};
+
+export type ShoppingSyncStatus = {
+  state: 'local' | 'offline' | 'syncing' | 'synced' | 'pending' | 'error';
+  pending: number;
+};
+
+export type LegacyShoppingMigration = {
+  count: number;
+  importIntoHouse(): Promise<void>;
 };
 
 export type NewShoppingListItem = Pick<

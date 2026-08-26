@@ -37,8 +37,8 @@ describe('isolamento completo por Casa', () => {
     const purchases = new PurchaseService(purchaseRepository, products);
     const stores = new StoreService(storeRepository, purchaseRepository);
     const budgets = new BudgetService(budgetRepository);
-    const houses = new HouseService(new LocalHouseRepository(database), categoryRepository);
     const categories = new CategoryService(categoryRepository, productRepository);
+    const houses = new HouseService(new LocalHouseRepository(database), categories);
 
     const houseA = await houses.getSnapshot();
     const actorA = {

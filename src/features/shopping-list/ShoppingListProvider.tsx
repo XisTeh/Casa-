@@ -5,9 +5,12 @@ import {
   type NewShoppingListItem,
   type ShoppingListItem,
   type ShoppingListItemUpdate,
+  type LegacyShoppingMigration,
+  type ShoppingSyncStatus,
 } from '../../domain/shopping-list';
 import { shoppingListContext } from './ShoppingListContext';
 import { useHousehold } from '../house/HouseContext';
+import { LegacyShoppingMigrationDialog } from './LegacyShoppingMigrationDialog';
 
 type ShoppingListProviderProps = {
   children: ReactNode;
@@ -34,12 +37,34 @@ export function ShoppingListProvider({
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<ShoppingSyncStatus>({
+    state: 'local',
+    pending: 0,
+  });
+  const [legacyMigration, setLegacyMigration] = useState<LegacyShoppingMigration | null>(null);
+  const [migrationDismissed, setMigrationDismissed] = useState(false);
 
   const refreshItems = useCallback(async () => {
     const savedItems = await service.list(activeHouse.id);
     setItems(sortItems(savedItems));
     setError(null);
   }, [activeHouse.id, service]);
+
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = service.subscribe(
+      activeHouse.id,
+      () => void refreshItems(),
+      (status) => active && setSyncStatus(status),
+    );
+    void service
+      .getLegacyMigration(activeHouse.id)
+      .then((migration) => active && setLegacyMigration(migration));
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [activeHouse.id, refreshItems, service]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -82,29 +107,54 @@ export function ShoppingListProvider({
 
   const updateItem = useCallback(
     async (id: string, changes: ShoppingListItemUpdate) => {
-      const updatedItem = await service.update(id, changes, activeHouse.id);
+      const updatedItem = await service.update(id, changes, activeHouse.id, activeMember.id);
       setItems((currentItems) =>
         sortItems(currentItems.map((item) => (item.id === id ? updatedItem : item))),
       );
       setError(null);
       return updatedItem;
     },
-    [activeHouse.id, service],
+    [activeHouse.id, activeMember.id, service],
   );
 
   const removeItem = useCallback(
     async (id: string) => {
-      await service.remove(id, activeHouse.id);
+      await service.remove(id, activeHouse.id, activeMember.id);
       setItems((currentItems) => currentItems.filter((item) => item.id !== id));
       setError(null);
     },
-    [activeHouse.id, service],
+    [activeHouse.id, activeMember.id, service],
   );
 
   const value = useMemo(
-    () => ({ items, isLoading, error, createItem, updateItem, removeItem, refreshItems }),
-    [createItem, error, isLoading, items, refreshItems, removeItem, updateItem],
+    () => ({
+      items,
+      isLoading,
+      error,
+      syncStatus,
+      createItem,
+      updateItem,
+      removeItem,
+      refreshItems,
+    }),
+    [createItem, error, isLoading, items, refreshItems, removeItem, syncStatus, updateItem],
   );
 
-  return <shoppingListContext.Provider value={value}>{children}</shoppingListContext.Provider>;
+  return (
+    <shoppingListContext.Provider value={value}>
+      {children}
+      {legacyMigration && !migrationDismissed && (
+        <LegacyShoppingMigrationDialog
+          count={legacyMigration.count}
+          houseName={activeHouse.name}
+          onClose={() => setMigrationDismissed(true)}
+          onImport={async () => {
+            await legacyMigration.importIntoHouse();
+            setLegacyMigration(null);
+            await refreshItems();
+          }}
+        />
+      )}
+    </shoppingListContext.Provider>
+  );
 }
