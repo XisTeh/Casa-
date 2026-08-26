@@ -1,5 +1,31 @@
 import { expect, test } from '@playwright/test';
 
+test('mostra a abertura do Casaê antes de liberar o aplicativo instalado', async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.includes('mobile'), 'Abertura específica do aplicativo mobile.');
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto('/?splash-preview=1');
+
+  const launchScreen = page.locator('#app-launch-screen');
+  await expect(launchScreen).toBeVisible();
+  await expect(launchScreen.getByText('Casaê', { exact: true })).toBeVisible();
+  await expect(launchScreen.getByText('Preparando sua casa')).toBeVisible();
+
+  const launchLayout = await launchScreen.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundImage,
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(launchLayout.background).toContain('linear-gradient');
+  expect(launchLayout.scrollWidth).toBe(launchLayout.clientWidth);
+
+  await expect(launchScreen).toHaveCount(0, { timeout: 3_000 });
+  await expect(page.getByRole('heading', { name: /olá, raabe/i })).toBeVisible();
+  await expect(page.locator('#root')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('#root')).not.toHaveAttribute('aria-hidden', 'true');
+});
+
 test('exibe a home e navega pela estrutura principal', async ({ page }) => {
   await page.goto('/');
 
@@ -46,16 +72,18 @@ test('mantém ações e filtros legíveis e bem posicionados no mobile', async (
 
   await quickPurchase.click();
   const purchaseDialog = page.getByRole('dialog', { name: 'Onde você está comprando?' });
-  const footerLayout = await purchaseDialog.locator('.shopping-dialog__footer').evaluate((footer) => {
-    const buttons = [...footer.querySelectorAll<HTMLElement>('.button')];
-    return {
-      columns: getComputedStyle(footer).gridTemplateColumns.split(' ').length,
-      labelsFit: buttons.every((button) => {
-        const label = button.querySelector<HTMLElement>('.button__label')!;
-        return label.scrollWidth <= label.clientWidth && button.scrollWidth <= button.clientWidth;
-      }),
-    };
-  });
+  const footerLayout = await purchaseDialog
+    .locator('.shopping-dialog__footer')
+    .evaluate((footer) => {
+      const buttons = [...footer.querySelectorAll<HTMLElement>('.button')];
+      return {
+        columns: getComputedStyle(footer).gridTemplateColumns.split(' ').length,
+        labelsFit: buttons.every((button) => {
+          const label = button.querySelector<HTMLElement>('.button__label')!;
+          return label.scrollWidth <= label.clientWidth && button.scrollWidth <= button.clientWidth;
+        }),
+      };
+    });
   expect(footerLayout).toEqual({ columns: 1, labelsFit: true });
   await purchaseDialog.getByRole('button', { name: 'Voltar' }).click();
 

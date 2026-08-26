@@ -29,16 +29,20 @@ remove apenas precaches antigos gerenciados pelo próprio Workbox.
 
 ## Ícones e splash
 
-Os ícones `v2` foram derivados programaticamente dos paths da marca já existente em
-`public/icons/casae-mark.svg`.
+Os ícones `v3` restauram a identidade escura usada originalmente no Android, agora em conjunto
+com uma tela de abertura própria do Casaê.
 
-- `casae-app-v2-192.png` e `casae-app-v2-512.png`: purpose `any`, fundo transparente.
-- `casae-maskable-v2-192.png` e `casae-maskable-v2-512.png`: purpose `maskable`, marca dentro da
-  safe zone e fundo `#f7f6f2`, igual ao `background_color`.
-- `apple-touch-icon-v2.png`: ícone 180 px com o mesmo fundo limpo.
+- `casae-app-v3-192.png` e `casae-app-v3-512.png`: purpose `any`, marca circular petróleo.
+- `casae-maskable-v3-512.png`: purpose `maskable`, fundo petróleo até a borda e marca dentro da
+  safe zone.
+- `apple-touch-icon-v3.png`: ícone 180 px com a mesma identidade escura.
+- `theme_color` e `background_color` usam `#11343d`, evitando o clarão branco entre o splash
+  nativo do Android e a aplicação.
 
-O antigo `casae-maskable-512.png` era totalmente opaco e levava `#11343d` até os quatro cantos,
-produzindo a placa verde no splash. Os novos nomes invalidam a referência anterior do manifest.
+Ao abrir em modo instalado, o HTML inicial exibe imediatamente uma composição de carregamento com
+marca, nome, mensagem e animação. Ela permanece apenas durante a primeira pintura do React e então
+faz uma transição curta para o aplicativo. A abertura não aparece em uma aba comum do navegador;
+`?splash-preview=1` existe apenas para revisão visual.
 
 Para conferir especificamente a troca do ícone/splash em um aparelho que já instalou a versão
 antiga, pode ser necessário remover a instalação **uma única vez** devido ao cache do launcher do

@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#173b45" />
+    <meta name="theme-color" content="#11343d" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Casaê — compras e gastos da casa em conjunto." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon-v2.png" sizes="180x180" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-v3.png" sizes="180x180" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,9 +17,242 @@
       rel="stylesheet"
     />
     <title>Casaê</title>
+    <style>
+      .app-launch-screen[hidden] {
+        display: none;
+      }
+
+      html.is-launching,
+      html.is-launching body {
+        overflow: hidden;
+        background: #11343d;
+      }
+
+      .app-launch-screen {
+        position: fixed;
+        z-index: 9999;
+        inset: 0;
+        display: grid;
+        min-height: 100dvh;
+        grid-template-rows: 1fr auto;
+        place-items: center;
+        padding: max(2rem, env(safe-area-inset-top)) 1.5rem max(2rem, env(safe-area-inset-bottom));
+        overflow: hidden;
+        color: #f8faf9;
+        background:
+          radial-gradient(circle at 50% 34%, rgb(232 121 74 / 18%), transparent 24rem),
+          linear-gradient(155deg, #0b282f 0%, #11343d 52%, #214c56 100%);
+        font-family: 'Manrope', system-ui, sans-serif;
+        opacity: 1;
+        transition:
+          opacity 360ms ease,
+          visibility 360ms ease;
+      }
+
+      .app-launch-screen::before,
+      .app-launch-screen::after {
+        position: absolute;
+        border: 1px solid rgb(255 255 255 / 7%);
+        border-radius: 50%;
+        content: '';
+        pointer-events: none;
+      }
+
+      .app-launch-screen::before {
+        top: -9rem;
+        right: -10rem;
+        width: 27rem;
+        height: 27rem;
+        box-shadow: 0 0 0 4.5rem rgb(255 255 255 / 2%);
+      }
+
+      .app-launch-screen::after {
+        bottom: -12rem;
+        left: -13rem;
+        width: 30rem;
+        height: 30rem;
+        border-color: rgb(232 121 74 / 8%);
+        box-shadow: 0 0 0 5rem rgb(232 121 74 / 2.5%);
+      }
+
+      .app-launch-screen.is-leaving {
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .app-launch-screen__brand {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        justify-items: center;
+        align-self: end;
+        margin-bottom: 14vh;
+        text-align: center;
+      }
+
+      .app-launch-screen__mark {
+        position: relative;
+        display: grid;
+        width: 9rem;
+        height: 9rem;
+        margin-bottom: 1.5rem;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 10%);
+        border-radius: 3rem 2.35rem 3.15rem 2.2rem;
+        background: rgb(255 255 255 / 5%);
+        box-shadow:
+          0 26px 70px rgb(5 24 29 / 32%),
+          inset 0 1px 0 rgb(255 255 255 / 8%);
+        animation: casae-launch-float 2.4s ease-in-out infinite;
+      }
+
+      .app-launch-screen__mark::after {
+        position: absolute;
+        inset: -0.65rem;
+        border: 1px solid rgb(232 121 74 / 16%);
+        border-radius: 3.4rem 2.7rem 3.5rem 2.6rem;
+        content: '';
+        animation: casae-launch-pulse 2.4s ease-in-out infinite;
+      }
+
+      .app-launch-screen__mark img {
+        width: 7.4rem;
+        height: 7.4rem;
+      }
+
+      .app-launch-screen__eyebrow {
+        margin-bottom: 0.35rem;
+        color: #ffc5aa;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .app-launch-screen__brand strong {
+        font-size: clamp(2.15rem, 10vw, 3rem);
+        line-height: 1;
+        letter-spacing: -0.065em;
+      }
+
+      .app-launch-screen__brand p {
+        margin: 0.7rem 0 0;
+        color: rgb(255 255 255 / 64%);
+        font-size: 0.95rem;
+      }
+
+      .app-launch-screen__progress {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        justify-items: center;
+        gap: 0.7rem;
+        color: rgb(255 255 255 / 58%);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .app-launch-screen__dots {
+        display: flex;
+        gap: 0.4rem;
+      }
+
+      .app-launch-screen__dots span {
+        width: 0.42rem;
+        height: 0.42rem;
+        border-radius: 50%;
+        background: #e8794a;
+        animation: casae-launch-dot 1.1s ease-in-out infinite;
+      }
+
+      .app-launch-screen__dots span:nth-child(2) {
+        animation-delay: 140ms;
+      }
+
+      .app-launch-screen__dots span:nth-child(3) {
+        animation-delay: 280ms;
+      }
+
+      @keyframes casae-launch-float {
+        50% {
+          transform: translateY(-0.35rem) rotate(-1deg);
+        }
+      }
+
+      @keyframes casae-launch-pulse {
+        50% {
+          opacity: 0.45;
+          transform: scale(1.045);
+        }
+      }
+
+      @keyframes casae-launch-dot {
+        0%,
+        65%,
+        100% {
+          opacity: 0.35;
+          transform: translateY(0);
+        }
+        35% {
+          opacity: 1;
+          transform: translateY(-0.25rem);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .app-launch-screen,
+        .app-launch-screen__mark,
+        .app-launch-screen__mark::after,
+        .app-launch-screen__dots span {
+          animation: none;
+          transition-duration: 0ms;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div aria-hidden="true" class="app-launch-screen" hidden id="app-launch-screen">
+      <div class="app-launch-screen__brand">
+        <div class="app-launch-screen__mark">
+          <img alt="" height="118" src="/icons/casae-icon.svg" width="118" />
+        </div>
+        <span class="app-launch-screen__eyebrow">Bem-vindo ao</span>
+        <strong>Casaê</strong>
+        <p>Sua casa, em sintonia.</p>
+      </div>
+      <div aria-live="polite" class="app-launch-screen__progress" role="status">
+        <div aria-hidden="true" class="app-launch-screen__dots">
+          <span></span><span></span><span></span>
+        </div>
+        <span>Preparando sua casa</span>
+      </div>
+    </div>
     <div id="root"></div>
+    <script>
+      (() => {
+        const launchScreen = document.getElementById('app-launch-screen');
+        const preview = new URLSearchParams(window.location.search).get('splash-preview') === '1';
+        const standalone =
+          window.matchMedia?.('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true ||
+          document.referrer.startsWith('android-app://');
+
+        if (!launchScreen) return;
+        if (!standalone && !preview) {
+          launchScreen.remove();
+          return;
+        }
+
+        launchScreen.hidden = false;
+        launchScreen.setAttribute('aria-hidden', 'false');
+        document.documentElement.classList.add('is-launching');
+        const root = document.getElementById('root');
+        root?.setAttribute('aria-hidden', 'true');
+        root?.setAttribute('inert', '');
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
