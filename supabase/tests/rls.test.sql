@@ -1,13 +1,63 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(52);
+select plan(58);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
   ('10000000-0000-0000-0000-000000000001', 'a@casae.test', '{"display_name":"Usuário A"}'),
   ('20000000-0000-0000-0000-000000000002', 'b@casae.test', '{"display_name":"Usuário B"}'),
   ('30000000-0000-0000-0000-000000000003', 'c@casae.test', '{"display_name":"Usuário C"}');
+
+select ok(
+  not has_function_privilege('public', 'public.handle_new_user()', 'EXECUTE'),
+  'PUBLIC não possui permissão para chamar handle_new_user'
+);
+
+set local role anon;
+select throws_ok(
+  $$select public.handle_new_user()$$,
+  '42501',
+  null,
+  'anon não chama handle_new_user diretamente'
+);
+reset role;
+
+set local role authenticated;
+select throws_ok(
+  $$select public.handle_new_user()$$,
+  '42501',
+  null,
+  'authenticated não chama handle_new_user diretamente'
+);
+reset role;
+
+select is(
+  (select count(*) from public.profiles
+   where id in (
+     '10000000-0000-0000-0000-000000000001',
+     '20000000-0000-0000-0000-000000000002',
+     '30000000-0000-0000-0000-000000000003'
+   )),
+  3::bigint,
+  'cadastro em auth.users continua criando profiles pelo trigger'
+);
+select is(
+  (select count(*) from pg_trigger
+   where tgname = 'on_auth_user_created'
+     and tgrelid = 'auth.users'::regclass
+     and tgfoid = 'public.handle_new_user()'::regprocedure
+     and not tgisinternal),
+  1::bigint,
+  'handle_new_user continua ligada ao trigger correto em auth.users'
+);
+select ok(
+  (select prosecdef
+     and coalesce(proconfig, array[]::text[]) @> array['search_path=""']
+   from pg_proc
+   where oid = 'public.handle_new_user()'::regprocedure),
+  'handle_new_user permanece SECURITY DEFINER com search_path vazio'
+);
 
 insert into public.houses (id, name, created_by)
 values

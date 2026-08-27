@@ -7,6 +7,7 @@ import purchaseLiveSync from '../../supabase/migrations/202608260004_purchase_li
 import budgetSync from '../../supabase/migrations/202608260005_budget_sync.sql?raw';
 import profileAvatarStorage from '../../supabase/migrations/202608270006_profile_avatar_storage.sql?raw';
 import houseOwnerRoleGuard from '../../supabase/migrations/202608270007_fix_house_owner_role_guard.sql?raw';
+import handleNewUserHardening from '../../supabase/migrations/202608270008_harden_handle_new_user.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -161,5 +162,14 @@ describe('migrations da fundação Supabase', () => {
     expect(houseOwnerRoleGuard).toContain("set search_path = ''");
     expect(houseOwnerRoleGuard).toContain('from public, anon');
     expect(houseOwnerRoleGuard).toContain('to authenticated');
+  });
+
+  it('impede clientes de executar diretamente a trigger function de cadastro', () => {
+    expect(handleNewUserHardening).toMatch(
+      /revoke execute on function public\.handle_new_user\(\) from public, anon, authenticated/i,
+    );
+    expect(handleNewUserHardening).not.toMatch(
+      /create|replace|alter|drop|insert|update|delete|truncate|grant/i,
+    );
   });
 });
