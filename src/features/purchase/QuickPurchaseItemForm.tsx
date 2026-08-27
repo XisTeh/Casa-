@@ -77,7 +77,7 @@ export function QuickPurchaseItemForm({
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const autocompleteRef = useRef<HTMLDivElement>(null);
+  const autocompleteRootRef = useRef<HTMLDivElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
   const productInputId = useId();
   const suggestionsId = useId();
@@ -97,13 +97,33 @@ export function QuickPurchaseItemForm({
   }, []);
 
   useEffect(() => {
-    if (!showSuggestions) return;
+    const happenedOutsideAutocomplete = (event: Event) => {
+      const autocomplete = autocompleteRootRef.current;
+      if (!autocomplete) return false;
+      const interactionPath = event.composedPath();
+      const happenedInside = interactionPath.length
+        ? interactionPath.includes(autocomplete)
+        : autocomplete.contains(event.target as Node);
+      return !happenedInside;
+    };
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!autocompleteRef.current?.contains(event.target as Node)) setShowSuggestions(false);
+      if (!happenedOutsideAutocomplete(event)) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const activatesControl = target?.closest(
+        'input, select, textarea, button, a[href], label, [role="button"], [tabindex]',
+      );
+      if (!activatesControl) setShowSuggestions(false);
+    };
+    const closeOnOutsideActivation = (event: MouseEvent) => {
+      if (happenedOutsideAutocomplete(event)) setShowSuggestions(false);
     };
     document.addEventListener('pointerdown', closeOnOutsidePointer, true);
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
-  }, [showSuggestions]);
+    document.addEventListener('click', closeOnOutsideActivation);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+      document.removeEventListener('click', closeOnOutsideActivation);
+    };
+  }, []);
 
   function resetForm() {
     setProductName('');
@@ -223,7 +243,7 @@ export function QuickPurchaseItemForm({
       </header>
 
       <div className="quick-purchase-form__fields">
-        <div className="quick-purchase-product" ref={autocompleteRef}>
+        <div className="quick-purchase-product" ref={autocompleteRootRef}>
           <label htmlFor={productInputId}>Produto</label>
           <div className="quick-purchase-input">
             <Search aria-hidden="true" size={17} />

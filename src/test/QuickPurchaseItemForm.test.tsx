@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { KnownProduct } from '../application/known-product-selectors';
@@ -62,7 +62,9 @@ describe('QuickPurchaseItemForm autocomplete', () => {
 
     await user.type(product, 'banana');
     expect(screen.getByRole('listbox', { name: 'Sugestões de produtos' })).toBeVisible();
-    fireEvent.pointerDown(document.body);
+    fireEvent.pointerDown(document.querySelector('.quick-purchase-form__header')!, {
+      pointerType: 'touch',
+    });
     expect(screen.queryByRole('listbox', { name: 'Sugestões de produtos' })).toBeNull();
 
     await user.type(product, ' ');
@@ -75,6 +77,24 @@ describe('QuickPurchaseItemForm autocomplete', () => {
     await user.type(product, 'banana');
     expect(screen.getByRole('listbox', { name: 'Sugestões de produtos' })).toBeVisible();
   });
+
+  it.each(['Quantidade do item rápido', 'Unidade do item rápido', 'Preço unitário do item rápido'])(
+    'fecha no toque em %s e transfere o foco normalmente',
+    async (fieldLabel) => {
+      const user = userEvent.setup();
+      renderForm();
+      const product = screen.getByRole('combobox', { name: 'Produto' });
+      const field = screen.getByLabelText(fieldLabel);
+
+      await user.type(product, 'banana');
+      expect(screen.getByRole('listbox', { name: 'Sugestões de produtos' })).toBeVisible();
+      fireEvent.pointerDown(field, { pointerType: 'touch' });
+      act(() => field.focus());
+
+      expect(field).toHaveFocus();
+      expect(screen.queryByRole('listbox', { name: 'Sugestões de produtos' })).toBeNull();
+    },
+  );
 
   it('seleciona a sugestão ativa com Enter e fecha imediatamente', async () => {
     const user = userEvent.setup();

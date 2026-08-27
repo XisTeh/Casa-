@@ -945,12 +945,30 @@ test('fecha autocomplete por toque e mantém sugestões no fluxo mobile', async 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await productInput.fill('Ar');
-  await listbox.getByRole('option', { name: /Arroz/i }).tap();
-  await expect(listbox).toBeHidden();
-  await expect(productInput).toHaveValue('Arroz');
   await quantityInput.tap();
   await expect(quantityInput).toBeFocused();
   await expect(listbox).toBeHidden();
+
+  await productInput.tap();
+  await expect(listbox).toBeVisible();
+  const unitSelect = page.getByLabel('Unidade do item rápido');
+  await unitSelect.tap();
+  await expect(listbox).toBeHidden();
+  await unitSelect.selectOption('kg');
+  await expect(unitSelect).toHaveValue('kg');
+
+  await productInput.tap();
+  await expect(listbox).toBeVisible();
+  const priceInput = page.getByLabel('Preço unitário do item rápido');
+  await priceInput.tap();
+  await expect(priceInput).toBeFocused();
+  await expect(listbox).toBeHidden();
+
+  await productInput.tap();
+  await expect(listbox).toBeVisible();
+  await listbox.getByRole('option', { name: /Arroz/i }).tap();
+  await expect(listbox).toBeHidden();
+  await expect(productInput).toHaveValue('Arroz');
 
   await productInput.fill('Ar');
   await expect(listbox).toBeVisible();
