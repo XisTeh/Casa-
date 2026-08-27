@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(52);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -183,6 +183,109 @@ select is(
   ),
   '{"shopping_items":3,"categories":3,"products":3,"stores":3,"purchase_sessions":3,"purchase_items":3,"house_budgets":3}'::jsonb,
   'member C lê criações do owner e do outro member'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
+select throws_ok(
+  $$select public.update_house_member_role(
+    'a0000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'member'
+  )$$,
+  'P0001',
+  'last_house_owner',
+  'último owner não pode ser rebaixado'
+);
+select is(
+  (select role from public.house_members
+   where house_id = 'a0000000-0000-0000-0000-000000000001'
+     and user_id = '10000000-0000-0000-0000-000000000001'),
+  'owner'::public.house_role,
+  'último owner permanece owner após a rejeição'
+);
+select lives_ok(
+  $$select public.update_house_member_role(
+    'a0000000-0000-0000-0000-000000000001',
+    '20000000-0000-0000-0000-000000000002',
+    'owner'
+  )$$,
+  'owner promove um segundo owner'
+);
+select is(
+  (select role from public.house_members
+   where house_id = 'a0000000-0000-0000-0000-000000000001'
+     and user_id = '20000000-0000-0000-0000-000000000002'),
+  'owner'::public.house_role,
+  'segundo owner foi promovido'
+);
+select lives_ok(
+  $$select public.update_house_member_role(
+    'a0000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'member'
+  )$$,
+  'primeiro owner pode ser rebaixado depois da transferência'
+);
+select is(
+  jsonb_build_object(
+    'first_role', (select role from public.house_members
+      where house_id = 'a0000000-0000-0000-0000-000000000001'
+        and user_id = '10000000-0000-0000-0000-000000000001'),
+    'second_role', (select role from public.house_members
+      where house_id = 'a0000000-0000-0000-0000-000000000001'
+        and user_id = '20000000-0000-0000-0000-000000000002'),
+    'active_owners', (select count(*) from public.house_members
+      where house_id = 'a0000000-0000-0000-0000-000000000001'
+        and role = 'owner' and status = 'active')
+  ),
+  '{"first_role":"member","second_role":"owner","active_owners":1}'::jsonb,
+  'transferência mantém exatamente um owner ativo'
+);
+select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000003', true);
+select throws_ok(
+  $$select public.update_house_member_role(
+    'a0000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'owner'
+  )$$,
+  'P0001',
+  'house_owner_required',
+  'membro sem autorização não altera papéis'
+);
+select throws_ok(
+  $$select public.update_house_member_role(
+    'b0000000-0000-0000-0000-000000000002',
+    '20000000-0000-0000-0000-000000000002',
+    'member'
+  )$$,
+  'P0001',
+  'house_owner_required',
+  'usuário de outra Casa não altera papéis'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.update_house_member_role(uuid,uuid,public.house_role)',
+    'EXECUTE'
+  ),
+  'anon não possui permissão para chamar a RPC'
+);
+select ok(
+  position(
+    'from public.houses' in lower(
+      pg_get_functiondef(
+        'public.update_house_member_role(uuid,uuid,public.house_role)'::regprocedure
+      )
+    )
+  ) > 0
+  and position(
+    'for update' in lower(
+      pg_get_functiondef(
+        'public.update_house_member_role(uuid,uuid,public.house_role)'::regprocedure
+      )
+    )
+  ) > 0,
+  'função serializa mudanças de papel bloqueando a linha da Casa'
 );
 
 select * from finish();

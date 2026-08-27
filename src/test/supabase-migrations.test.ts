@@ -6,6 +6,7 @@ import catalogSync from '../../supabase/migrations/202608260003_catalog_stores_s
 import purchaseLiveSync from '../../supabase/migrations/202608260004_purchase_live_sync.sql?raw';
 import budgetSync from '../../supabase/migrations/202608260005_budget_sync.sql?raw';
 import profileAvatarStorage from '../../supabase/migrations/202608270006_profile_avatar_storage.sql?raw';
+import houseOwnerRoleGuard from '../../supabase/migrations/202608270007_fix_house_owner_role_guard.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -142,5 +143,23 @@ describe('migrations da fundação Supabase', () => {
       'alter publication supabase_realtime add table public.profiles',
     );
     expect(profileAvatarStorage).not.toMatch(/service_role|createSignedUrl|signed_url/i);
+  });
+
+  it('protege o último owner com identificador inequívoco e lock por Casa', () => {
+    expect(houseOwnerRoleGuard).toContain(
+      'create or replace function public.update_house_member_role',
+    );
+    expect(houseOwnerRoleGuard).toContain('selected_member_role public.house_role');
+    expect(houseOwnerRoleGuard).not.toMatch(/declare\s+current_role\b/i);
+    expect(houseOwnerRoleGuard).toMatch(
+      /from public\.houses\s+where id = target_house_id\s+for update/i,
+    );
+    expect(houseOwnerRoleGuard).toContain("membership.status = 'active'");
+    expect(houseOwnerRoleGuard).toContain("membership.role = 'owner'");
+    expect(houseOwnerRoleGuard).toContain("raise exception 'last_house_owner'");
+    expect(houseOwnerRoleGuard).toContain('security definer');
+    expect(houseOwnerRoleGuard).toContain("set search_path = ''");
+    expect(houseOwnerRoleGuard).toContain('from public, anon');
+    expect(houseOwnerRoleGuard).toContain('to authenticated');
   });
 });
