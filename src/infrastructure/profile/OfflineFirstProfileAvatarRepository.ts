@@ -1,6 +1,10 @@
 import type { UserProfile } from '../../domain/online-house';
 import type { ProfileAvatarRepository } from '../../domain/profile-avatar-repository';
-import type { ProfileAvatarData, ProfileAvatarMutation } from '../../domain/profile-avatar';
+import {
+  getProfileAvatarStoragePaths,
+  type ProfileAvatarData,
+  type ProfileAvatarMutation,
+} from '../../domain/profile-avatar';
 import type { ProfileAvatarSyncOutboxEntry } from '../../domain/profile-avatar-sync';
 import type { ShoppingSyncRuntime } from '../shopping/OfflineFirstShoppingRepository';
 import type { RemoteProfileAvatarStore } from '../supabase/SupabaseProfileAvatarRepository';
@@ -213,13 +217,13 @@ export class OfflineFirstProfileAvatarRepository implements ProfileAvatarReposit
         try {
           const authoritative = await this.remote.apply(entry.payload);
           await this.removeOutboxIfVersion(entry.id, entry.version);
-          const storageVersion = entry.payload.storageVersion ?? String(entry.payload.revision);
+          const paths = getProfileAvatarStoragePaths(entry.payload);
           if (
             entry.operation === 'upsert' &&
             authoritative.avatarRevision === entry.payload.revision &&
             authoritative.avatarUpdatedAt &&
-            authoritative.avatarPath === `${profileId}/${storageVersion}/avatar.webp` &&
-            authoritative.avatarSourcePath === `${profileId}/${storageVersion}/source.webp`
+            authoritative.avatarPath === paths.avatarPath &&
+            authoritative.avatarSourcePath === paths.sourcePath
           ) {
             await this.local.save(profileId, {
               ...entry.payload.avatar!,

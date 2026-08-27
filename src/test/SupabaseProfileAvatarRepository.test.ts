@@ -102,6 +102,77 @@ describe('SupabaseProfileAvatarRepository', () => {
     );
   });
 
+  it('usa paths e content-type JPEG quando o Safari não consegue exportar WebP', async () => {
+    const avatarRevision = 1787832060000;
+    const storageVersion = `${avatarRevision}-iphone-operation`;
+    const avatarUpdatedAt = '2026-08-27T12:01:00.000Z';
+    rpcMock.mockResolvedValue({
+      data: [
+        {
+          ...profileRow,
+          avatar_path: `${profileRow.id}/${storageVersion}/avatar.jpg`,
+          avatar_source_path: `${profileRow.id}/${storageVersion}/source.jpg`,
+          avatar_crop: { zoom: 1.3, centerX: 0.45, centerY: 0.55 },
+          avatar_revision: avatarRevision,
+          avatar_updated_at: avatarUpdatedAt,
+        },
+      ],
+      error: null,
+    });
+    const avatarBlob = new Blob(['iphone-avatar'], { type: 'image/jpeg' });
+    const sourceBlob = new Blob(['iphone-source'], { type: 'image/jpeg' });
+    const repository = new SupabaseProfileAvatarRepository();
+
+    await repository.apply({
+      profileId: profileRow.id,
+      operation: 'upsert',
+      avatar: {
+        avatarBlob,
+        avatarSourceBlob: sourceBlob,
+        avatarCrop: { zoom: 1.3, centerX: 0.45, centerY: 0.55 },
+      },
+      revision: avatarRevision,
+      updatedAt: avatarUpdatedAt,
+      storageVersion,
+    });
+
+    expect(uploadMock).toHaveBeenNthCalledWith(
+      1,
+      `${profileRow.id}/${storageVersion}/avatar.jpg`,
+      avatarBlob,
+      expect.objectContaining({ contentType: 'image/jpeg', upsert: true }),
+    );
+    expect(uploadMock).toHaveBeenNthCalledWith(
+      2,
+      `${profileRow.id}/${storageVersion}/source.jpg`,
+      sourceBlob,
+      expect.objectContaining({ contentType: 'image/jpeg', upsert: true }),
+    );
+    expect(rpcMock).toHaveBeenCalledWith(
+      'apply_profile_avatar',
+      expect.objectContaining({
+        item_avatar_path: `${profileRow.id}/${storageVersion}/avatar.jpg`,
+        item_avatar_source_path: `${profileRow.id}/${storageVersion}/source.jpg`,
+      }),
+    );
+  });
+
+  it('rejeita um Blob processado com MIME incompatível antes de enviar ao Storage', async () => {
+    const repository = new SupabaseProfileAvatarRepository();
+
+    await expect(
+      repository.apply({
+        profileId: profileRow.id,
+        operation: 'upsert',
+        avatar: { avatarBlob: new Blob(['invalid'], { type: 'image/png' }) },
+        revision: 1,
+        updatedAt: '2026-08-27T12:02:00.000Z',
+      }),
+    ).rejects.toThrow(/formato processado/i);
+    expect(uploadMock).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
   it('baixa blobs privados diretamente, sem URL temporária', async () => {
     downloadMock
       .mockResolvedValueOnce({ data: new Blob(['avatar']), error: null })

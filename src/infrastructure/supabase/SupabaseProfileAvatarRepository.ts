@@ -1,6 +1,10 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { UserProfile } from '../../domain/online-house';
-import type { AvatarCrop, ProfileAvatarMutation } from '../../domain/profile-avatar';
+import {
+  getProfileAvatarStoragePaths,
+  type AvatarCrop,
+  type ProfileAvatarMutation,
+} from '../../domain/profile-avatar';
 import { getSupabaseClient } from '../../lib/supabase/client';
 import type { Database, Json } from '../../lib/supabase/database.types';
 
@@ -74,14 +78,7 @@ export class SupabaseProfileAvatarRepository implements RemoteProfileAvatarStore
 
   async apply(mutation: ProfileAvatarMutation) {
     const previous = await this.getProfile(mutation.profileId);
-    const storageVersion = mutation.storageVersion ?? String(mutation.revision);
-    const paths =
-      mutation.operation === 'upsert'
-        ? {
-            avatarPath: `${mutation.profileId}/${storageVersion}/avatar.webp`,
-            sourcePath: `${mutation.profileId}/${storageVersion}/source.webp`,
-          }
-        : { avatarPath: null, sourcePath: null };
+    const paths = getProfileAvatarStoragePaths(mutation);
 
     if (mutation.operation === 'upsert') {
       const avatar = mutation.avatar;
@@ -168,7 +165,7 @@ export class SupabaseProfileAvatarRepository implements RemoteProfileAvatarStore
   private async upload(path: string, blob: Blob) {
     const { error } = await this.client.storage.from(this.bucket).upload(path, blob, {
       cacheControl: '31536000',
-      contentType: 'image/webp',
+      contentType: blob.type,
       upsert: true,
     });
     if (error) throw error;

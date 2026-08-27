@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(58);
+select plan(67);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -30,6 +30,10 @@ select throws_ok(
   null,
   'authenticated não chama handle_new_user diretamente'
 );
+reset role;
+
+set local role anon;
+select is((select count(*) from public.profiles), 0::bigint, 'anon não lê profiles/avatar metadata');
 reset role;
 
 select is(
@@ -77,6 +81,10 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
 
 select ok(private.is_house_member('a0000000-0000-0000-0000-000000000001'), 'helper reconhece owner ativo como membro');
+select is((select count(*) from public.profiles where id = '30000000-0000-0000-0000-000000000003'), 1::bigint, 'owner A lê metadata do avatar do member C');
+select is((select count(*) from public.profiles where id = '20000000-0000-0000-0000-000000000002'), 0::bigint, 'owner A não lê metadata de usuário de outra Casa');
+select ok(private.shares_house_with('30000000-0000-0000-0000-000000000003'), 'relação owner para member é autorizada');
+select ok(not private.shares_house_with('20000000-0000-0000-0000-000000000002'), 'relação com outra Casa é negada');
 select is((select count(*) from public.houses), 1::bigint, 'A enxerga somente Casa A');
 select is((select count(*) from public.houses where id = 'b0000000-0000-0000-0000-000000000002'), 0::bigint, 'A não faz SELECT na Casa B');
 select is((with changed as (update public.houses set name = 'Invadida' where id = 'b0000000-0000-0000-0000-000000000002' returning 1) select count(*) from changed), 0::bigint, 'A não faz UPDATE na Casa B');
@@ -105,6 +113,7 @@ update public.purchase_sessions set status = 'completed', completed_at = now(), 
 
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', true);
 select is((select count(*) from public.houses where id = 'a0000000-0000-0000-0000-000000000001'), 0::bigint, 'B não faz SELECT na Casa A antes do convite');
+select is((select count(*) from public.profiles where id = '10000000-0000-0000-0000-000000000001'), 0::bigint, 'usuário B sem Casa compartilhada não lê metadata do owner A');
 select is((with changed as (update public.houses set name = 'Invadida' where id = 'a0000000-0000-0000-0000-000000000001' returning 1) select count(*) from changed), 0::bigint, 'B não faz UPDATE na Casa A');
 select lives_ok($$insert into public.shopping_items (id, house_id, name, normalized_name, quantity, unit, category_key, added_by_name, created_by, updated_by, created_at, updated_at) values ('bb000000-0000-4000-8000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Café', 'cafe', 1, 'pacote', 'mercearia', 'Usuário B', auth.uid(), auth.uid(), now(), now())$$, 'B insere item na Casa B');
 select is((select count(*) from public.shopping_items where house_id = 'a0000000-0000-0000-0000-000000000001'), 0::bigint, 'B não lê itens da Casa A');
@@ -132,6 +141,8 @@ select is((with removed as (delete from public.shopping_items where house_id = '
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', true);
 select lives_ok($$select public.accept_house_invite((select token from pg_temp.invite_result limit 1))$$, 'B aceita convite válido');
 select is((select count(*) from public.houses where id = 'a0000000-0000-0000-0000-000000000001'), 1::bigint, 'B passa a acessar Casa A após membership');
+select is((select count(*) from public.profiles where id = '10000000-0000-0000-0000-000000000001'), 1::bigint, 'member B lê metadata do avatar do owner A');
+select is((select count(*) from public.profiles where id = '30000000-0000-0000-0000-000000000003'), 1::bigint, 'member B lê metadata do avatar do member C');
 select is((select count(*) from public.shopping_items where house_id = 'a0000000-0000-0000-0000-000000000001'), 1::bigint, 'B passa a ler a Lista da Casa A após membership');
 select is((select count(*) from public.house_budgets where house_id = 'a0000000-0000-0000-0000-000000000001'), 1::bigint, 'B passa a ler orçamento da Casa A após membership');
 select lives_ok($$update public.house_budgets set amount_cents = 170000, updated_by = auth.uid(), updated_at = now() where house_id = 'a0000000-0000-0000-0000-000000000001' and year = 2026 and month = 8$$, 'B atualiza orçamento da Casa A como membro ativo');
@@ -159,6 +170,7 @@ update public.purchase_sessions set status = 'completed', completed_at = now(), 
 
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000003', true);
 select ok(private.is_house_member('a0000000-0000-0000-0000-000000000001'), 'helper reconhece member C ativo');
+select is((select count(*) from public.profiles where id in ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')), 2::bigint, 'member C lê metadata do owner e do outro member da mesma Casa');
 select ok(not private.is_house_member('b0000000-0000-0000-0000-000000000002'), 'helper rejeita usuário sem membership na Casa B');
 insert into public.shopping_items (id, house_id, name, normalized_name, quantity, unit, category_key, added_by_name, created_by, updated_by, created_at, updated_at)
 values ('ac000000-0000-4000-8000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Item C', 'item c', 1, 'unidade', 'outros', 'Usuário C', auth.uid(), auth.uid(), now(), now());

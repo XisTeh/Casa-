@@ -4,7 +4,7 @@ import { Blob as NodeBlob } from 'node:buffer';
 import { IDBKeyRange as FakeIDBKeyRange, indexedDB as fakeIndexedDB } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UserProfile } from '../domain/online-house';
-import type { ProfileAvatarMutation } from '../domain/profile-avatar';
+import { getProfileAvatarStoragePaths, type ProfileAvatarMutation } from '../domain/profile-avatar';
 import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
 import { LocalProfileAvatarRepository } from '../infrastructure/profile/LocalProfileAvatarRepository';
 import { OfflineFirstProfileAvatarRepository } from '../infrastructure/profile/OfflineFirstProfileAvatarRepository';
@@ -14,7 +14,8 @@ import type { RemoteProfileAvatarStore } from '../infrastructure/supabase/Supaba
 const USER_A = '10000000-0000-4000-8000-000000000001';
 const USER_B = '20000000-0000-4000-8000-000000000002';
 
-const blob = (text: string) => new NodeBlob([text], { type: 'image/webp' }) as unknown as Blob;
+const blob = (text: string, type = 'image/webp') =>
+  new NodeBlob([text], { type }) as unknown as Blob;
 
 function emptyProfile(id = USER_A): UserProfile {
   return {
@@ -74,10 +75,8 @@ class Remote implements RemoteProfileAvatarStore {
     if (mutation.profileId !== this.userId) throw new Error('profile_avatar_owner_required');
     const current = this.backend.profiles.get(mutation.profileId)!;
     if (!current.avatarUpdatedAt || mutation.updatedAt >= current.avatarUpdatedAt) {
-      const storageVersion = mutation.storageVersion ?? String(mutation.revision);
-      const avatarPath = `${mutation.profileId}/${storageVersion}/avatar.webp`;
-      const sourcePath = `${mutation.profileId}/${storageVersion}/source.webp`;
-      if (mutation.avatar) this.backend.avatars.set(avatarPath, mutation.avatar);
+      const { avatarPath, sourcePath } = getProfileAvatarStoragePaths(mutation);
+      if (mutation.avatar) this.backend.avatars.set(avatarPath!, mutation.avatar);
       const next: UserProfile = {
         ...current,
         avatarPath: mutation.operation === 'upsert' ? avatarPath : null,
@@ -172,6 +171,67 @@ describe('OfflineFirstProfileAvatarRepository', () => {
     expect(await (await pc.repository.get(USER_A))?.avatarBlob.text()).toBe('avatar-phone-crop');
     disconnectPc();
     disconnectPhone();
+  });
+
+  it('propaga JPEG do member ao owner por Realtime, reload e dispositivo novo sem vazar mutação', async () => {
+    const backend = new AvatarBackend();
+    const owner = device('owner-observer', backend, USER_A);
+    const memberRuntime = new Runtime();
+    memberRuntime.online = false;
+    const member = device('member-iphone', backend, USER_B, memberRuntime);
+    const disconnectMemberOnOwner = owner.repository.subscribe(USER_B, () => undefined);
+    const disconnectMemberSelf = member.repository.subscribe(USER_B, () => undefined);
+    const disconnectOwnerOnMember = member.repository.subscribe(USER_A, () => undefined);
+
+    await member.repository.save(USER_B, {
+      avatarBlob: blob('janifer-avatar', 'image/jpeg'),
+      avatarSourceBlob: blob('janifer-source', 'image/jpeg'),
+      avatarCrop: { zoom: 1.45, centerX: 0.42, centerY: 0.58 },
+    });
+    expect((await member.repository.get(USER_B))?.avatarSyncState).toBe('pending');
+    expect(backend.profiles.get(USER_B)?.avatarRevision).toBe(0);
+
+    memberRuntime.reconnect();
+    await member.repository.syncNow(USER_B);
+
+    await vi.waitFor(async () => {
+      expect(await (await owner.repository.get(USER_B))?.avatarBlob.text()).toBe('janifer-avatar');
+    });
+    expect(backend.profiles.get(USER_B)).toMatchObject({
+      avatarPath: expect.stringMatching(/\/avatar\.jpg$/),
+      avatarSourcePath: expect.stringMatching(/\/source\.jpg$/),
+    });
+
+    const ownerAfterReload = new OfflineFirstProfileAvatarRepository(
+      owner.database,
+      owner.remote,
+      owner.runtime,
+    );
+    await ownerAfterReload.syncNow(USER_B);
+    expect(await (await ownerAfterReload.get(USER_B))?.avatarBlob.text()).toBe('janifer-avatar');
+    expect((await ownerAfterReload.get(USER_B))?.avatarSyncState).toBe('synced');
+
+    const ownerNewDevice = device('owner-new-device', backend, USER_A);
+    await ownerNewDevice.repository.syncNow(USER_B);
+    expect(await (await ownerNewDevice.repository.get(USER_B))?.avatarBlob.text()).toBe(
+      'janifer-avatar',
+    );
+
+    owner.runtime.current = new Date('2026-08-27T12:03:00.000Z');
+    await owner.repository.save(USER_A, {
+      avatarBlob: blob('ronnan-avatar'),
+      avatarSourceBlob: blob('ronnan-source'),
+      avatarCrop: { zoom: 1.2, centerX: 0.5, centerY: 0.5 },
+    });
+    await vi.waitFor(async () => {
+      expect(await (await member.repository.get(USER_A))?.avatarBlob.text()).toBe('ronnan-avatar');
+    });
+
+    await expect(owner.repository.save(USER_B, null)).rejects.toThrow(/próprio usuário/i);
+    expect(await (await owner.repository.get(USER_B))?.avatarBlob.text()).toBe('janifer-avatar');
+    disconnectMemberOnOwner();
+    disconnectMemberSelf();
+    disconnectOwnerOnMember();
   });
 
   it('mantém Blob local offline, envia ao reconectar e remove em todos os dispositivos', async () => {

@@ -8,6 +8,7 @@ import budgetSync from '../../supabase/migrations/202608260005_budget_sync.sql?r
 import profileAvatarStorage from '../../supabase/migrations/202608270006_profile_avatar_storage.sql?raw';
 import houseOwnerRoleGuard from '../../supabase/migrations/202608270007_fix_house_owner_role_guard.sql?raw';
 import handleNewUserHardening from '../../supabase/migrations/202608270008_harden_handle_new_user.sql?raw';
+import safariProfileAvatarUpload from '../../supabase/migrations/202608270009_support_safari_profile_avatar_upload.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -170,6 +171,23 @@ describe('migrations da fundação Supabase', () => {
     );
     expect(handleNewUserHardening).not.toMatch(
       /create|replace|alter|drop|insert|update|delete|truncate|grant/i,
+    );
+  });
+
+  it('aceita o fallback JPEG do Safari sem tornar avatars públicos ou ampliar leitura', () => {
+    expect(safariProfileAvatarUpload).toContain(
+      "allowed_mime_types = array['image/webp', 'image/jpeg']",
+    );
+    expect(safariProfileAvatarUpload).toContain("in ('webp', 'jpg', 'jpeg')");
+    expect(safariProfileAvatarUpload).toContain("bucket_id = 'profile-avatars'");
+    expect(safariProfileAvatarUpload).toContain(
+      '(storage.foldername(name))[1] = (select auth.uid())::text',
+    );
+    expect(safariProfileAvatarUpload).toContain('set public = false');
+    expect(safariProfileAvatarUpload).not.toMatch(/profile_avatars_select_authorized/);
+    expect(safariProfileAvatarUpload).not.toMatch(/profile_avatars_delete_self/);
+    expect(safariProfileAvatarUpload).not.toMatch(
+      /apply_profile_avatar|service_role|signed|public\s*=\s*true/i,
     );
   });
 });

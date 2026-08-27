@@ -44,12 +44,17 @@ class MemoryPreference implements ActiveHousePreference {
 
 class MemoryAvatars implements ProfileAvatarRepository {
   values = new Map<string, ProfileAvatarData>();
+  reconciled: string[] = [];
   async get(id: string) {
     return this.values.get(id);
   }
   async save(id: string, avatar: ProfileAvatarData | null) {
     if (avatar) this.values.set(id, avatar);
     else this.values.delete(id);
+  }
+  async reconcile(profile: UserProfile) {
+    this.reconciled.push(profile.id);
+    return this.get(profile.id);
   }
 }
 
@@ -285,6 +290,61 @@ describe('OnlineHouseService', () => {
     expect(await secondHouse.activeMember?.avatarBlob?.text()).toBe('avatar');
     const firstHouse = await service.switchHouse('user-a', 'house-1');
     expect(await firstHouse.activeMember?.avatarBlob?.text()).toBe('avatar');
+  });
+
+  it('hidrata avatares de todos os membros da Casa ativa e isola o house switch', async () => {
+    const repository = new FakeOnlineHouses();
+    repository.profiles.set('user-c', {
+      id: 'user-c',
+      displayName: 'Outra pessoa',
+      avatarPath: null,
+      avatarSourcePath: null,
+      avatarCrop: null,
+      avatarRevision: 0,
+      avatarUpdatedAt: null,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
+    repository.houses = [
+      {
+        id: 'house-a',
+        name: 'Casa compartilhada',
+        createdBy: 'user-a',
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+      {
+        id: 'house-b',
+        name: 'Outra Casa',
+        createdBy: 'user-a',
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    ];
+    repository.members = [
+      repository.member('house-a', 'user-a', 'owner'),
+      repository.member('house-a', 'user-b', 'member'),
+      repository.member('house-b', 'user-a', 'owner'),
+      repository.member('house-b', 'user-c', 'member'),
+    ];
+    const avatars = new MemoryAvatars();
+    avatars.values.set('user-a', { avatarBlob: new Blob(['owner']) });
+    avatars.values.set('user-b', { avatarBlob: new Blob(['member']) });
+    avatars.values.set('user-c', { avatarBlob: new Blob(['other-house']) });
+    const preference = new MemoryPreference();
+    preference.set('house-a');
+    const service = new OnlineHouseService(repository, avatars, preference);
+
+    const shared = await service.getSnapshot('user-a');
+    expect(shared.members.map((member) => member.id)).toEqual(['user-a', 'user-b']);
+    expect(await shared.members[1]?.avatarBlob?.text()).toBe('member');
+    expect(avatars.reconciled).toEqual(['user-a', 'user-b']);
+
+    avatars.reconciled = [];
+    const switched = await service.switchHouse('user-a', 'house-b');
+    expect(switched.members.map((member) => member.id)).toEqual(['user-a', 'user-c']);
+    expect(await switched.members[1]?.avatarBlob?.text()).toBe('other-house');
+    expect(avatars.reconciled).toEqual(['user-a', 'user-c']);
   });
 
   it('reabre a última Casa conhecida quando a rede falha sem inventar nova membership', async () => {
