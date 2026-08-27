@@ -128,7 +128,7 @@ describe('PurchasePage', () => {
     await user.click(within(startDialog).getByRole('button', { name: 'Começar compra rápida' }));
 
     expect(await screen.findByText(/compra rápida iniciada/i)).toBeInTheDocument();
-    await user.type(screen.getByRole('textbox', { name: 'Produto' }), 'Coca-Cola 2L');
+    await user.type(screen.getByRole('combobox', { name: 'Produto' }), 'Coca-Cola 2L');
     await user.clear(screen.getByLabelText('Quantidade do item rápido'));
     await user.type(screen.getByLabelText('Quantidade do item rápido'), '2');
     await user.type(screen.getByLabelText('Preço unitário do item rápido'), '8,99');
@@ -137,7 +137,7 @@ describe('PurchasePage', () => {
 
     expect(await screen.findByRole('button', { name: 'Editar Coca-Cola 2L' })).toBeInTheDocument();
     expect(screen.getAllByText('R$ 17,98').length).toBeGreaterThan(0);
-    expect(screen.getByRole('textbox', { name: 'Produto' })).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Produto' })).toHaveFocus();
 
     await user.click(screen.getByRole('button', { name: 'Editar Coca-Cola 2L' }));
     const editQuantity = screen.getByLabelText('Quantidade do item rápido');

@@ -1,5 +1,13 @@
 import { Calculator, Check, Pencil, Plus, Search, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import {
   findKnownProductSuggestions,
   findUnambiguousExactProduct,
@@ -63,9 +71,16 @@ export function QuickPurchaseItemForm({
       : emptyMetadata,
   );
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [confirmedProductIdentity, setConfirmedProductIdentity] = useState<string | null>(
+    editingItem?.productId ?? null,
+  );
+  const [highlightedSuggestion, setHighlightedSuggestion] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
+  const productInputId = useId();
+  const suggestionsId = useId();
   const parsedQuantity = parseBrazilianDecimal(quantity);
   const unitPriceCents = parseBrazilianCurrencyToCents(unitPrice);
   const totalPriceCents =
@@ -81,12 +96,23 @@ export function QuickPurchaseItemForm({
     requestAnimationFrame(() => productInputRef.current?.focus());
   }, []);
 
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!autocompleteRef.current?.contains(event.target as Node)) setShowSuggestions(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+  }, [showSuggestions]);
+
   function resetForm() {
     setProductName('');
     setQuantity('1');
     setUnit('unidade');
     setUnitPrice('');
     setMetadata(emptyMetadata);
+    setConfirmedProductIdentity(null);
+    setHighlightedSuggestion(0);
     setShowSuggestions(false);
     setError(null);
   }
@@ -103,11 +129,35 @@ export function QuickPurchaseItemForm({
       category: product.category,
       categoryName: product.categoryName,
     });
+    setConfirmedProductIdentity(product.identity);
+    setHighlightedSuggestion(0);
     setShowSuggestions(false);
+  }
+
+  function handleProductKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      setShowSuggestions(false);
+      return;
+    }
+    if (!suggestions.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      setShowSuggestions(true);
+      setHighlightedSuggestion((current) => {
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        return (current + direction + suggestions.length) % suggestions.length;
+      });
+      return;
+    }
+    if (event.key === 'Enter' && showSuggestions) {
+      event.preventDefault();
+      selectProduct(suggestions[highlightedSuggestion] ?? suggestions[0]!);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setShowSuggestions(false);
     if (!productName.trim()) return setError('Informe o nome do produto.');
     if (parsedQuantity === null || parsedQuantity <= 0) {
       return setError('Informe uma quantidade válida.');
@@ -173,30 +223,64 @@ export function QuickPurchaseItemForm({
       </header>
 
       <div className="quick-purchase-form__fields">
-        <label className="quick-purchase-product">
-          <span>Produto</span>
+        <div className="quick-purchase-product" ref={autocompleteRef}>
+          <label htmlFor={productInputId}>Produto</label>
           <div className="quick-purchase-input">
             <Search aria-hidden="true" size={17} />
             <input
+              aria-activedescendant={
+                showSuggestions && suggestions.length
+                  ? `${suggestionsId}-option-${highlightedSuggestion}`
+                  : undefined
+              }
               aria-autocomplete="list"
-              aria-controls="quick-product-suggestions"
+              aria-controls={suggestionsId}
+              aria-expanded={showSuggestions && suggestions.length > 0}
               autoFocus
               autoComplete="off"
+              id={productInputId}
               onChange={(event) => {
-                setProductName(event.target.value);
+                const nextName = event.target.value;
+                setProductName(nextName);
                 setMetadata(emptyMetadata);
-                setShowSuggestions(true);
+                setConfirmedProductIdentity(null);
+                setHighlightedSuggestion(0);
+                setShowSuggestions(findKnownProductSuggestions(knownProducts, nextName).length > 0);
               }}
-              onFocus={() => setShowSuggestions(true)}
+              onFocus={() => {
+                if (!confirmedProductIdentity && suggestions.length > 0) {
+                  setHighlightedSuggestion(0);
+                  setShowSuggestions(true);
+                }
+              }}
+              onKeyDown={handleProductKeyDown}
               placeholder="Ex.: Coca-Cola 2L"
               ref={productInputRef}
+              role="combobox"
               value={productName}
             />
           </div>
           {showSuggestions && suggestions.length > 0 && (
-            <div className="quick-product-suggestions" id="quick-product-suggestions">
-              {suggestions.map((product) => (
-                <button key={product.identity} onClick={() => selectProduct(product)} type="button">
+            <div
+              aria-label="Sugestões de produtos"
+              className="quick-product-suggestions"
+              id={suggestionsId}
+              role="listbox"
+            >
+              {suggestions.map((product, index) => (
+                <button
+                  aria-selected={index === highlightedSuggestion}
+                  id={`${suggestionsId}-option-${index}`}
+                  key={product.identity}
+                  onClick={() => selectProduct(product)}
+                  onFocus={() => setHighlightedSuggestion(index)}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    selectProduct(product);
+                  }}
+                  role="option"
+                  type="button"
+                >
                   <span>
                     <strong>{product.name}</strong>
                     {product.brand && <small>{product.brand}</small>}
@@ -211,7 +295,7 @@ export function QuickPurchaseItemForm({
               ))}
             </div>
           )}
-        </label>
+        </div>
 
         <label>
           <span>Quantidade</span>
@@ -220,6 +304,7 @@ export function QuickPurchaseItemForm({
               aria-label="Quantidade do item rápido"
               inputMode="decimal"
               onChange={(event) => setQuantity(event.target.value)}
+              onFocus={() => setShowSuggestions(false)}
               value={quantity}
             />
           </div>
@@ -230,6 +315,7 @@ export function QuickPurchaseItemForm({
           <select
             aria-label="Unidade do item rápido"
             onChange={(event) => setUnit(event.target.value as ShoppingUnit)}
+            onFocus={() => setShowSuggestions(false)}
             value={unit}
           >
             {SHOPPING_UNITS.map((option) => (
@@ -248,6 +334,7 @@ export function QuickPurchaseItemForm({
               aria-label="Preço unitário do item rápido"
               inputMode="decimal"
               onChange={(event) => setUnitPrice(event.target.value)}
+              onFocus={() => setShowSuggestions(false)}
               placeholder="0,00"
               value={unitPrice}
             />

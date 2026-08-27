@@ -376,7 +376,8 @@
   gap: var(--space-3);
 }
 
-.quick-purchase-form__fields label {
+.quick-purchase-form__fields > label,
+.quick-purchase-product {
   position: relative;
   display: grid;
   min-width: 0;
@@ -385,6 +386,10 @@
   color: var(--text-secondary);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-bold);
+}
+
+.quick-purchase-product > label {
+  width: max-content;
 }
 
 .quick-purchase-input,
@@ -467,6 +472,19 @@
 .quick-product-suggestions small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
+}
+
+@media (max-width: 768px) {
+  .quick-product-suggestions {
+    position: static;
+    z-index: auto;
+    max-width: 100%;
+    max-height: min(232px, 36vh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: var(--shadow-card);
+  }
 }
 
 .quick-purchase-form__result {

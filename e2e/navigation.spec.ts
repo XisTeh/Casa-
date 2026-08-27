@@ -713,7 +713,7 @@ test('atualiza Gastos e Dashboard após uma compra e persiste o orçamento mensa
   await page.getByLabel('Nome do novo mercado').fill('Mercado Gastos E2E');
   await page.getByRole('dialog').getByRole('button', { name: 'Começar compra rápida' }).click();
 
-  const quickProductInput = page.getByRole('textbox', { name: 'Produto' });
+  const quickProductInput = page.getByRole('combobox', { name: 'Produto' });
   await expect(quickProductInput).toBeFocused();
   await quickProductInput.fill('Café do orçamento');
   await page.getByLabel('Quantidade do item rápido').fill('2');
@@ -856,7 +856,7 @@ test('isola dados ao criar e alternar Casas e registra o membro ativo', async ({
   await page.getByRole('button', { name: 'Começar compra rápida' }).click();
   await page.getByRole('radio', { name: /Mercado Casa Nova/ }).check();
   await page.getByRole('dialog').getByRole('button', { name: 'Começar compra rápida' }).click();
-  await page.getByRole('textbox', { name: 'Produto' }).fill('Café Casa Nova');
+  await page.getByRole('combobox', { name: 'Produto' }).fill('Café Casa Nova');
   await page.getByLabel('Quantidade do item rápido').fill('1');
   await page.getByLabel('Preço unitário do item rápido').fill('30,00');
   await page.getByRole('button', { name: 'Adicionar e continuar' }).click();
@@ -893,6 +893,81 @@ test('isola dados ao criar e alternar Casas e registra o membro ativo', async ({
   await expect(page.getByText('R$ 200,00').first()).toBeVisible();
 });
 
+test('fecha autocomplete por toque e mantém sugestões no fluxo mobile', async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.includes('mobile'), 'Cenário específico de toque mobile.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/comprar');
+  await page.getByRole('button', { name: 'Começar compra rápida' }).click();
+  await page.getByLabel('Nome do novo mercado').fill('Mercado Autocomplete E2E');
+  await page.getByRole('dialog').getByRole('button', { name: 'Começar compra rápida' }).click();
+
+  const productInput = page.getByRole('combobox', { name: 'Produto' });
+  const quantityInput = page.getByLabel('Quantidade do item rápido');
+  const listbox = page.getByRole('listbox', { name: 'Sugestões de produtos' });
+  const mobileWidths = [320, 360, 375, 390, 393, 412, 430, 768];
+
+  for (const width of mobileWidths) {
+    await page.setViewportSize({ width, height: width === 768 ? 1024 : 844 });
+    await productInput.fill('');
+    await productInput.fill('Ar');
+    await expect(listbox).toBeVisible();
+    const layout = await page.evaluate(() => {
+      const suggestions = document.querySelector<HTMLElement>('.quick-product-suggestions')!;
+      const product = document.querySelector<HTMLInputElement>('#root input[role="combobox"]')!;
+      const quantity = document.querySelector<HTMLInputElement>(
+        'input[aria-label="Quantidade do item rápido"]',
+      )!;
+      const suggestionsBounds = suggestions.getBoundingClientRect();
+      const productBounds = product.getBoundingClientRect();
+      const quantityBounds = quantity.getBoundingClientRect();
+      const overlapsQuantity = !(
+        suggestionsBounds.right <= quantityBounds.left ||
+        suggestionsBounds.left >= quantityBounds.right ||
+        suggestionsBounds.bottom <= quantityBounds.top ||
+        suggestionsBounds.top >= quantityBounds.bottom
+      );
+      return {
+        position: getComputedStyle(suggestions).position,
+        startsAfterProduct: suggestionsBounds.top >= productBounds.bottom,
+        overlapsQuantity,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(layout).toEqual({
+      position: 'static',
+      startsAfterProduct: true,
+      overlapsQuantity: false,
+      overflow: 0,
+    });
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await productInput.fill('Ar');
+  await listbox.getByRole('option', { name: /Arroz/i }).tap();
+  await expect(listbox).toBeHidden();
+  await expect(productInput).toHaveValue('Arroz');
+  await quantityInput.tap();
+  await expect(quantityInput).toBeFocused();
+  await expect(listbox).toBeHidden();
+
+  await productInput.fill('Ar');
+  await expect(listbox).toBeVisible();
+  await page.locator('.quick-purchase-form__header').tap();
+  await expect(listbox).toBeHidden();
+  await productInput.focus();
+  await expect(listbox).toBeVisible();
+  await productInput.press('Escape');
+  await expect(listbox).toBeHidden();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await productInput.fill('');
+  await productInput.fill('Ar');
+  await expect(listbox).toBeVisible();
+  await expect(listbox).toHaveCSS('position', 'absolute');
+});
+
 test('faz compra rápida com três produtos em 320px', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes('mobile'), 'Cenário específico de uso com uma mão.');
   await page.setViewportSize({ width: 320, height: 720 });
@@ -909,7 +984,7 @@ test('faz compra rápida com três produtos em 320px', async ({ page }, testInfo
   }));
 
   const addProduct = async (name: string, quantity: string, price: string) => {
-    const productInput = page.getByRole('textbox', { name: 'Produto' });
+    const productInput = page.getByRole('combobox', { name: 'Produto' });
     const quantityInput = page.getByLabel('Quantidade do item rápido');
     const priceInput = page.getByLabel('Preço unitário do item rápido');
     await productInput.fill(name);
