@@ -5,7 +5,6 @@ import {
   type NewShoppingListItem,
   type ShoppingListItem,
   type ShoppingListItemUpdate,
-  type LegacyShoppingMigration,
   type ShoppingSyncStatus,
 } from '../../domain/shopping-list';
 import { shoppingListContext } from './ShoppingListContext';
@@ -40,11 +39,6 @@ export function ShoppingListProvider({
     state: 'local',
     pending: 0,
   });
-  const [legacyCandidate, setLegacyCandidate] = useState<{
-    houseId: string;
-    migration: LegacyShoppingMigration;
-  } | null>(null);
-
   const refreshItems = useCallback(async () => {
     const savedItems = await service.list(activeHouse.id);
     setItems(sortItems(savedItems));
@@ -58,12 +52,6 @@ export function ShoppingListProvider({
       () => void refreshItems(),
       (status) => active && setSyncStatus(status),
     );
-    void service
-      .getLegacyMigration(activeHouse.id)
-      .then(
-        (migration) =>
-          active && setLegacyCandidate(migration ? { houseId: activeHouse.id, migration } : null),
-      );
     return () => {
       active = false;
       unsubscribe();
@@ -130,15 +118,6 @@ export function ShoppingListProvider({
     [activeHouse.id, activeMember.id, service],
   );
 
-  const legacyMigration =
-    legacyCandidate?.houseId === activeHouse.id ? legacyCandidate.migration : null;
-  const importLegacyItems = useCallback(async () => {
-    if (!legacyMigration) return;
-    await legacyMigration.importIntoHouse();
-    setLegacyCandidate(null);
-    await refreshItems();
-  }, [legacyMigration, refreshItems]);
-
   const value = useMemo(
     () => ({
       items,
@@ -149,21 +128,8 @@ export function ShoppingListProvider({
       updateItem,
       removeItem,
       refreshItems,
-      legacyMigration,
-      importLegacyItems,
     }),
-    [
-      createItem,
-      error,
-      importLegacyItems,
-      isLoading,
-      items,
-      legacyMigration,
-      refreshItems,
-      removeItem,
-      syncStatus,
-      updateItem,
-    ],
+    [createItem, error, isLoading, items, refreshItems, removeItem, syncStatus, updateItem],
   );
 
   return <shoppingListContext.Provider value={value}>{children}</shoppingListContext.Provider>;

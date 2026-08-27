@@ -40,7 +40,8 @@ describe('isolamento completo por Casa', () => {
     const categories = new CategoryService(categoryRepository, productRepository);
     const houses = new HouseService(new LocalHouseRepository(database), categories);
 
-    const houseA = await houses.getSnapshot();
+    const legacySnapshot = await houses.getSnapshot();
+    const houseA = await houses.createHouse('Casa A', legacySnapshot.activeMember);
     const actorA = {
       houseId: houseA.activeHouse.id,
       memberId: houseA.activeMember.id,

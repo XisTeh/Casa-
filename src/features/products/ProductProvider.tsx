@@ -10,7 +10,6 @@ import type {
 } from '../../domain/catalog';
 import { productContext } from './ProductContext';
 import { useHousehold } from '../house/HouseContext';
-import type { LegacyCatalogMigration } from '../../domain/catalog-sync';
 import type { ShoppingSyncStatus } from '../../domain/shopping-list';
 
 type ProductProviderProps = {
@@ -38,11 +37,6 @@ export function ProductProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<ShoppingSyncStatus>({ state: 'local', pending: 0 });
-  const [legacyPrompt, setLegacyPrompt] = useState<{
-    houseId: string;
-    migration: LegacyCatalogMigration;
-  } | null>(null);
-
   const refreshProducts = useCallback(async () => {
     const [savedProducts, savedCategories] = await Promise.all([
       productService.list(activeHouse.id),
@@ -60,13 +54,7 @@ export function ProductProvider({
       () => void refreshProducts(),
       (status) => active && setSyncStatus(status),
     );
-    void productService
-      .syncNow(activeHouse.id)
-      .then(() => productService.getLegacyMigration(activeHouse.id))
-      .then(
-        (migration) =>
-          active && setLegacyPrompt(migration ? { houseId: activeHouse.id, migration } : null),
-      );
+    void productService.syncNow(activeHouse.id);
     return () => {
       active = false;
       unsubscribe();
@@ -156,14 +144,6 @@ export function ProductProvider({
     },
     [activeHouse.id, categoryService, refreshProducts],
   );
-  const legacyMigration = legacyPrompt?.houseId === activeHouse.id ? legacyPrompt.migration : null;
-  const importLegacyCatalog = useCallback(async () => {
-    if (!legacyMigration) return;
-    await legacyMigration.importIntoHouse();
-    setLegacyPrompt(null);
-    await refreshProducts();
-  }, [legacyMigration, refreshProducts]);
-
   const value = useMemo(
     () => ({
       products,
@@ -180,8 +160,6 @@ export function ProductProvider({
       renameCategory,
       setCategoryActive,
       refreshProducts,
-      legacyMigration,
-      importLegacyCatalog,
     }),
     [
       addToList,
@@ -189,11 +167,9 @@ export function ProductProvider({
       createCategory,
       createProduct,
       error,
-      importLegacyCatalog,
       syncStatus,
       isLoading,
       products,
-      legacyMigration,
       refreshProducts,
       renameCategory,
       setActive,

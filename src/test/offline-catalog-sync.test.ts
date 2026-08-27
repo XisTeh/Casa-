@@ -349,7 +349,7 @@ describe('OfflineFirstCatalogSync', () => {
     expect(await accountA.getStatus(HOUSE_A)).toMatchObject({ pending: 1 });
   });
 
-  it('preserva IDs legados, não envia antes da confirmação e torna a importação idempotente', async () => {
+  it('ignora catálogo legacy sem misturar ou enviar para a Casa atual', async () => {
     const runtime = new Runtime();
     const remote = new Remote();
     const database = new CasaeLocalDatabase(`catalog-legacy-${Math.random()}`, {
@@ -363,29 +363,16 @@ describe('OfflineFirstCatalogSync', () => {
     database.getMemoryDatabase().products.set(legacyProduct.id, legacyProduct);
     database.getMemoryDatabase().stores.set(legacyStore.id, legacyStore);
     const sync = new OfflineFirstCatalogSync(database, remote, runtime);
-    const migration = await sync.getLegacyMigration(HOUSE_A);
-    expect(migration?.categories).toBeGreaterThanOrEqual(1);
-    expect(migration?.products).toBeGreaterThanOrEqual(1);
-    expect(migration?.stores).toBeGreaterThanOrEqual(1);
+    runtime.online = true;
+    await sync.syncNow(HOUSE_A);
+
+    expect(await sync.categories.list(HOUSE_A)).toEqual([]);
+    expect(await sync.products.list(HOUSE_A)).toEqual([]);
+    expect(await sync.stores.list(HOUSE_A)).toEqual([]);
     expect(remote.applyCalls).toBe(0);
-    await migration!.importIntoHouse();
-    const restored = (await sync.categories.list(HOUSE_A)).find(
-      (item) => item.name === legacy.name,
-    );
-    expect(restored?.id).toMatch(/^[0-9a-f-]{36}$/);
-    expect(restored?.syncId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(
-      (await sync.products.list(HOUSE_A)).some((item) => item.name === legacyProduct.name),
-    ).toBe(true);
-    expect((await sync.stores.list(HOUSE_A)).some((item) => item.name === legacyStore.name)).toBe(
-      true,
-    );
-    const appliedOnce = remote.applyCalls;
-    await migration!.importIntoHouse();
-    expect(remote.applyCalls).toBe(appliedOnce);
-    const snapshot = await remote.list(HOUSE_A);
-    expect(snapshot.products[0]?.categoryId).toBe(snapshot.categories[0]?.id);
-    expect(await sync.getLegacyMigration(HOUSE_A)).toBeNull();
+    expect(await sync.categories.list(LEGACY_HOUSE_ID)).toContainEqual(legacy);
+    expect(await sync.products.list(LEGACY_HOUSE_ID)).toContainEqual(legacyProduct);
+    expect(await sync.stores.list(LEGACY_HOUSE_ID)).toContainEqual(legacyStore);
   });
 
   it('não classifica dados locais da Casa atual como legacy', async () => {
@@ -402,6 +389,6 @@ describe('OfflineFirstCatalogSync', () => {
 
     const sync = new OfflineFirstCatalogSync(database, new Remote(), runtime);
 
-    expect(await sync.getLegacyMigration(HOUSE_A)).toBeNull();
+    expect(await sync.categories.list(HOUSE_A)).toContainEqual(current);
   });
 });

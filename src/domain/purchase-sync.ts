@@ -19,12 +19,6 @@ export type PurchaseSyncOutboxEntry = {
   nextAttemptAt?: string;
 };
 
-export type LegacyPurchaseMigration = {
-  sessions: number;
-  items: number;
-  importIntoHouse(): Promise<void>;
-};
-
 export interface PurchaseSyncRepository {
   subscribe(
     houseId: string,
@@ -33,14 +27,8 @@ export interface PurchaseSyncRepository {
   ): () => void;
   syncNow(houseId: string): Promise<void>;
   getStatus(houseId: string): Promise<ShoppingSyncStatus>;
-  getLegacyMigration(houseId: string): Promise<LegacyPurchaseMigration | null>;
 }
 
 export function isPurchaseSyncRepository(value: object): value is object & PurchaseSyncRepository {
-  return (
-    'syncNow' in value &&
-    'subscribe' in value &&
-    'getStatus' in value &&
-    'getLegacyMigration' in value
-  );
+  return 'syncNow' in value && 'subscribe' in value && 'getStatus' in value;
 }

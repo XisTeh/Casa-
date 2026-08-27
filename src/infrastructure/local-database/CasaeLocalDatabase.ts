@@ -47,13 +47,6 @@ export const CASAE_STORES = {
   syncOutbox: 'syncOutbox',
 } as const;
 
-const LEGACY_SHOPPING_DATABASE = 'casae-shopping-list';
-const LEGACY_PURCHASE_DATABASE = 'casae-purchases';
-const LEGACY_SHOPPING_ITEMS_STORE = 'shopping-items';
-const LEGACY_SHOPPING_METADATA_STORE = 'metadata';
-const LEGACY_PURCHASE_SESSIONS_STORE = 'purchase-sessions';
-const LEGACY_PURCHASE_ITEMS_STORE = 'purchase-items';
-const LEGACY_SEED_KEY = 'shopping-list-seed-v1';
 const MIGRATION_KEY = 'legacy-databases-to-casae-local-v1';
 export const CATALOG_MIGRATION_KEY = 'catalog-products-categories-v2';
 export const RECURRENCE_MIGRATION_KEY = 'product-recurrence-v5';
@@ -99,18 +92,9 @@ export type CasaeMemoryDatabase = {
   >;
 };
 
-export type LegacyDatabaseSnapshot = {
-  shoppingDatabaseFound: boolean;
-  shoppingSeeded: boolean;
-  shoppingItems: ShoppingListItem[];
-  purchaseDatabaseFound: boolean;
-  purchaseSessions: PersistedPurchaseSession[];
-  purchaseItems: PurchaseItem[];
-};
-
 type CasaeLocalDatabaseOptions = {
+  /** Mantido para compatibilidade de chamadas antigas; importação legacy está desativada. */
   migrateLegacy?: boolean;
-  legacyReader?: () => Promise<LegacyDatabaseSnapshot>;
 };
 
 const memoryDatabases = new Map<string, CasaeMemoryDatabase>();
@@ -289,126 +273,6 @@ function openCasaeDatabase(name: string): Promise<IDBDatabase> {
   });
 }
 
-async function databaseExists(name: string) {
-  if ('databases' in indexedDB && typeof indexedDB.databases === 'function') {
-    const databases = await indexedDB.databases();
-    return databases.some((database) => database.name === name);
-  }
-
-  return true;
-}
-
-async function openLegacyDatabase(name: string): Promise<IDBDatabase | null> {
-  if (!(await databaseExists(name))) {
-    return null;
-  }
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name);
-    let createdDuringCheck = false;
-
-    request.onupgradeneeded = () => {
-      createdDuringCheck = true;
-    };
-    request.onsuccess = () => {
-      if (createdDuringCheck) {
-        request.result.close();
-        indexedDB.deleteDatabase(name);
-        resolve(null);
-        return;
-      }
-
-      resolve(request.result);
-    };
-    request.onerror = () =>
-      reject(request.error ?? new Error(`Não foi possível ler o banco legado ${name}.`));
-  });
-}
-
-async function readLegacyShoppingDatabase() {
-  const database = await openLegacyDatabase(LEGACY_SHOPPING_DATABASE);
-
-  if (!database || !database.objectStoreNames.contains(LEGACY_SHOPPING_ITEMS_STORE)) {
-    database?.close();
-    return { found: false, seeded: false, items: [] as ShoppingListItem[] };
-  }
-
-  const storeNames = [LEGACY_SHOPPING_ITEMS_STORE];
-  if (database.objectStoreNames.contains(LEGACY_SHOPPING_METADATA_STORE)) {
-    storeNames.push(LEGACY_SHOPPING_METADATA_STORE);
-  }
-  const transaction = database.transaction(storeNames, 'readonly');
-  const items = await requestToPromise(
-    transaction.objectStore(LEGACY_SHOPPING_ITEMS_STORE).getAll() as IDBRequest<ShoppingListItem[]>,
-  );
-  let seeded = false;
-
-  if (storeNames.includes(LEGACY_SHOPPING_METADATA_STORE)) {
-    const metadata = await requestToPromise(
-      transaction.objectStore(LEGACY_SHOPPING_METADATA_STORE).get(LEGACY_SEED_KEY) as IDBRequest<
-        LocalMetadata | undefined
-      >,
-    );
-    seeded = metadata?.value === true;
-  }
-
-  await transactionToPromise(transaction);
-  database.close();
-  return { found: true, seeded, items };
-}
-
-async function readLegacyPurchaseDatabase() {
-  const database = await openLegacyDatabase(LEGACY_PURCHASE_DATABASE);
-
-  if (!database || !database.objectStoreNames.contains(LEGACY_PURCHASE_SESSIONS_STORE)) {
-    database?.close();
-    return {
-      found: false,
-      sessions: [] as PersistedPurchaseSession[],
-      items: [] as PurchaseItem[],
-    };
-  }
-
-  const storeNames = [LEGACY_PURCHASE_SESSIONS_STORE];
-  if (database.objectStoreNames.contains(LEGACY_PURCHASE_ITEMS_STORE)) {
-    storeNames.push(LEGACY_PURCHASE_ITEMS_STORE);
-  }
-  const transaction = database.transaction(storeNames, 'readonly');
-  const sessions = await requestToPromise(
-    transaction.objectStore(LEGACY_PURCHASE_SESSIONS_STORE).getAll() as IDBRequest<
-      PersistedPurchaseSession[]
-    >,
-  );
-  const items = storeNames.includes(LEGACY_PURCHASE_ITEMS_STORE)
-    ? await requestToPromise(
-        transaction.objectStore(LEGACY_PURCHASE_ITEMS_STORE).getAll() as IDBRequest<PurchaseItem[]>,
-      )
-    : [];
-  await transactionToPromise(transaction);
-  database.close();
-  return { found: true, sessions, items };
-}
-
-async function readLegacyDatabases(): Promise<LegacyDatabaseSnapshot> {
-  const [shopping, purchases] = await Promise.all([
-    readLegacyShoppingDatabase(),
-    readLegacyPurchaseDatabase(),
-  ]);
-
-  return {
-    shoppingDatabaseFound: shopping.found,
-    shoppingSeeded: shopping.seeded,
-    shoppingItems: shopping.items,
-    purchaseDatabaseFound: purchases.found,
-    purchaseSessions: purchases.sessions,
-    purchaseItems: purchases.items,
-  };
-}
-
-function normalizeStoreName(name: string) {
-  return name.trim().toLocaleLowerCase('pt-BR');
-}
-
 function stableHash(value: string) {
   let hash = 2166136261;
   for (const character of value) {
@@ -416,44 +280,6 @@ function stableHash(value: string) {
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0).toString(36);
-}
-
-function prepareLegacyData(snapshot: LegacyDatabaseSnapshot) {
-  const now = new Date().toISOString();
-  const storesByKey = new Map<string, Store>();
-  const sessions = snapshot.purchaseSessions.map((session) => {
-    const houseId = session.houseId || HOUSE_ID;
-    const storeKey = `${houseId}:${normalizeStoreName(session.storeNameSnapshot)}`;
-    const storeId = session.storeId ?? `migrated-store-${stableHash(storeKey)}`;
-
-    if (!storesByKey.has(storeKey)) {
-      storesByKey.set(storeKey, {
-        id: storeId,
-        houseId,
-        name: session.storeNameSnapshot,
-        nickname: '',
-        address: '',
-        notes: 'Cadastro recuperado dos dados locais anteriores.',
-        active: true,
-        createdAt: session.startedAt || now,
-        updatedAt: now,
-      });
-    }
-
-    return { ...session, houseId, storeId };
-  });
-  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
-  const items = snapshot.purchaseItems.map((item) => {
-    const session = sessionsById.get(item.purchaseSessionId);
-    return {
-      ...item,
-      houseId: item.houseId || session?.houseId || HOUSE_ID,
-      storeId: item.storeId ?? session?.storeId,
-      origin: item.origin ?? (item.sourceShoppingItemId ? 'shopping-list' : 'manual'),
-    };
-  });
-
-  return { sessions, items, stores: [...storesByKey.values()] };
 }
 
 function categoryIdForLegacy(houseId: string, legacyKey: string) {
@@ -620,17 +446,12 @@ export class CasaeLocalDatabase {
   private databasePromise?: Promise<IDBDatabase>;
   private initializationPromise?: Promise<void>;
   private readonly memoryDatabase: CasaeMemoryDatabase;
-  private readonly migrateLegacy: boolean;
-  private readonly legacyReader: () => Promise<LegacyDatabaseSnapshot>;
-  private readonly readLegacyInMemory: boolean;
 
   constructor(
     readonly name = CASAE_DATABASE_NAME,
     options: CasaeLocalDatabaseOptions = {},
   ) {
-    this.migrateLegacy = options.migrateLegacy ?? name === CASAE_DATABASE_NAME;
-    this.legacyReader = options.legacyReader ?? readLegacyDatabases;
-    this.readLegacyInMemory = options.legacyReader !== undefined;
+    void options.migrateLegacy;
     let memoryDatabase = memoryDatabases.get(name);
 
     if (!memoryDatabase) {
@@ -683,31 +504,12 @@ export class CasaeLocalDatabase {
     await transactionToPromise(checkTransaction);
 
     if (!migration?.value) {
-      const snapshot = this.migrateLegacy
-        ? await this.legacyReader()
-        : {
-            shoppingDatabaseFound: false,
-            shoppingSeeded: false,
-            shoppingItems: [],
-            purchaseDatabaseFound: false,
-            purchaseSessions: [],
-            purchaseItems: [],
-          };
-      const prepared = prepareLegacyData(snapshot);
-      const transaction = database.transaction(Object.values(CASAE_STORES), 'readwrite');
-      const shoppingStore = transaction.objectStore(CASAE_STORES.shoppingItems);
-
-      snapshot.shoppingItems.forEach((item) => shoppingStore.put(item));
-      prepared.sessions.forEach((session) =>
-        transaction.objectStore(CASAE_STORES.purchaseSessions).put(session),
-      );
-      prepared.items.forEach((item) =>
-        transaction.objectStore(CASAE_STORES.purchaseItems).put(item),
-      );
-      prepared.stores.forEach((store) => transaction.objectStore(CASAE_STORES.stores).put(store));
-
-      const metadataStore = transaction.objectStore(CASAE_STORES.metadata);
-      metadataStore.put({ key: MIGRATION_KEY, value: true, completedAt: new Date().toISOString() });
+      const transaction = database.transaction(CASAE_STORES.metadata, 'readwrite');
+      transaction.objectStore(CASAE_STORES.metadata).put({
+        key: MIGRATION_KEY,
+        value: true,
+        completedAt: new Date().toISOString(),
+      });
       await transactionToPromise(transaction);
     }
 
@@ -811,27 +613,6 @@ export class CasaeLocalDatabase {
 
   private async initializeMemoryDatabase() {
     if (!this.memoryDatabase.metadata.get(MIGRATION_KEY)?.value) {
-      const snapshot =
-        this.migrateLegacy && this.readLegacyInMemory
-          ? await this.legacyReader()
-          : {
-              shoppingDatabaseFound: false,
-              shoppingSeeded: false,
-              shoppingItems: [],
-              purchaseDatabaseFound: false,
-              purchaseSessions: [],
-              purchaseItems: [],
-            };
-      const prepared = prepareLegacyData(snapshot);
-      snapshot.shoppingItems.forEach((item) =>
-        this.memoryDatabase.shoppingItems.set(item.id, item),
-      );
-      prepared.sessions.forEach((session) =>
-        this.memoryDatabase.purchaseSessions.set(session.id, session),
-      );
-      prepared.items.forEach((item) => this.memoryDatabase.purchaseItems.set(item.id, item));
-      prepared.stores.forEach((store) => this.memoryDatabase.stores.set(store.id, store));
-
       this.memoryDatabase.metadata.set(MIGRATION_KEY, {
         key: MIGRATION_KEY,
         value: true,

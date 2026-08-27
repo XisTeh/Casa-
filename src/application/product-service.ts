@@ -53,12 +53,6 @@ export class ProductService {
     if (isCatalogSyncRepository(this.repository)) await this.repository.syncNow(houseId);
   }
 
-  getLegacyMigration(houseId: string) {
-    return isCatalogSyncRepository(this.repository)
-      ? this.repository.getLegacyMigration(houseId)
-      : Promise.resolve(null);
-  }
-
   async list(houseId = HOUSE_ID): Promise<ProductWithLastPurchase[]> {
     await this.repository.initialize();
     const [products, sessions] = await Promise.all([

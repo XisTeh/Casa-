@@ -113,6 +113,110 @@ async function expectNoAutomaticLegacyDialogs(page: Page) {
   await expect(page.getByRole('dialog', { name: 'Adicionar itens locais?' })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Adicionar dados locais?' })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Adicionar compras anteriores?' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Dados locais antigos' })).toHaveCount(0);
+  await expect(page.getByText('Recuperação opcional')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Adicionar à Casa' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ocultar' })).toHaveCount(0);
+}
+
+async function seedLegacyIndexedDb(page: Page) {
+  await page.evaluate(async () => {
+    const openDatabase = (name: string, version?: number) =>
+      new Promise<IDBDatabase>((resolve, reject) => {
+        const request = version ? indexedDB.open(name, version) : indexedDB.open(name);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    const waitForTransaction = (transaction: IDBTransaction) =>
+      new Promise<void>((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+    const legacyHouseId = 'house-raabe-sidney';
+    const now = '2026-08-01T10:00:00.000Z';
+    const unified = await openDatabase('casae-local');
+    const unifiedTransaction = unified.transaction(
+      ['shoppingItems', 'products', 'categories', 'stores'],
+      'readwrite',
+    );
+    unifiedTransaction.objectStore('shoppingItems').put({
+      id: 'legacy-e2e-item',
+      houseId: legacyHouseId,
+      productName: 'Item antigo',
+      quantity: 1,
+      unit: 'unidade',
+      category: 'outros',
+      preferredBrand: '',
+      notes: '',
+      priority: 'normal',
+      status: 'pending',
+      addedBy: 'Legacy',
+      createdAt: now,
+      updatedAt: now,
+    });
+    unifiedTransaction.objectStore('products').put({
+      id: 'legacy-e2e-product',
+      houseId: legacyHouseId,
+      name: 'Produto antigo',
+      normalizedName: 'produto antigo',
+      brand: '',
+      categoryId: 'legacy-e2e-category',
+      defaultUnit: 'unidade',
+      notes: '',
+      favorite: false,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    unifiedTransaction.objectStore('categories').put({
+      id: 'legacy-e2e-category',
+      houseId: legacyHouseId,
+      name: 'Categoria antiga',
+      normalizedName: 'categoria antiga',
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    unifiedTransaction.objectStore('stores').put({
+      id: 'legacy-e2e-store',
+      houseId: legacyHouseId,
+      name: 'Mercado antigo',
+      nickname: '',
+      address: '',
+      notes: '',
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await waitForTransaction(unifiedTransaction);
+    unified.close();
+
+    const createSeparateDatabase = (
+      name: string,
+      storeName: string,
+      record: Record<string, unknown>,
+    ) =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(name, 1);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore(storeName, { keyPath: 'id' }).put(record);
+        };
+        request.onsuccess = () => {
+          request.result.close();
+          resolve();
+        };
+        request.onerror = () => reject(request.error);
+      });
+    await createSeparateDatabase('casae-shopping-list', 'shopping-items', {
+      id: 'separate-legacy-item',
+      productName: 'Item separado antigo',
+    });
+    await createSeparateDatabase('casae-purchases', 'purchase-sessions', {
+      id: 'separate-legacy-session',
+      status: 'completed',
+    });
+  });
 }
 
 test('login, cadastro e recuperação permanecem responsivos', async ({ page }) => {
@@ -157,12 +261,12 @@ test('Lista, Configurações, membros, Casas e convite usam a identidade remota'
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Olá, Raabe Online/ })).toBeVisible();
   await expectNoAutomaticLegacyDialogs(page);
+  await seedLegacyIndexedDb(page);
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/configuracoes');
     await expect(page.getByRole('heading', { name: 'Casa Online' })).toBeVisible();
     await expectNoAutomaticLegacyDialogs(page);
-    await expect(page.getByRole('heading', { name: 'Dados locais antigos' })).toBeVisible();
     await expect(page.getByText('raabe@casae.test')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Raabe Online', level: 2 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(

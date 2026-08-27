@@ -5,12 +5,7 @@ import {
   type Product,
 } from '../../domain/catalog';
 import type { CategoryRepository } from '../../domain/category-repository';
-import type {
-  CatalogEntityType,
-  CatalogSyncOutboxEntry,
-  LegacyCatalogMigration,
-} from '../../domain/catalog-sync';
-import { LEGACY_HOUSE_ID } from '../../domain/house';
+import type { CatalogEntityType, CatalogSyncOutboxEntry } from '../../domain/catalog-sync';
 import type { ProductRepository } from '../../domain/product-repository';
 import type { ShoppingSyncStatus } from '../../domain/shopping-list';
 import type { Store, StoreUpdate } from '../../domain/store';
@@ -22,7 +17,6 @@ import {
   CasaeLocalDatabase,
   requestToPromise,
   transactionToPromise,
-  type LocalMetadata,
 } from '../local-database/CasaeLocalDatabase';
 import { LocalCategoryRepository } from './LocalCategoryRepository';
 import { LocalProductRepository } from './LocalProductRepository';
@@ -308,112 +302,6 @@ export class OfflineFirstCatalogSync {
       await this.deleteOutbox(ownPending.id);
   }
 
-  async getLegacyMigration(houseId: string): Promise<LegacyCatalogMigration | null> {
-    const key = `catalog-imported:${houseId}`;
-    if (await this.getMetadata(key)) return null;
-    const legacy =
-      houseId === LEGACY_HOUSE_ID
-        ? { categories: [], products: [], stores: [] }
-        : await this.unsynced(LEGACY_HOUSE_ID);
-    const { categories, products, stores } = legacy;
-    if (!categories.length && !products.length && !stores.length) {
-      await this.setMetadata({ key, value: true, completedAt: this.runtime.now().toISOString() });
-      return null;
-    }
-    return {
-      categories: categories.length,
-      products: products.length,
-      stores: stores.length,
-      importIntoHouse: async () => {
-        if (await this.getMetadata(key)) return;
-        const categoryMap = new Map<string, string>();
-        const existing = await this.listCategories(houseId);
-        for (const source of categories) {
-          const matched = source.legacyKey
-            ? existing.find((item) => item.legacyKey === source.legacyKey)
-            : source.houseId === houseId
-              ? existing.find((item) => item.id === source.id)
-              : undefined;
-          const current = (await this.getRaw('category', source.id)) as Category | undefined;
-          const next = matched
-            ? {
-                ...matched,
-                syncId: matched.syncId ?? current?.syncId ?? makeUuid(),
-                updatedAt: nextTimestamp(matched.updatedAt, this.runtime.now()),
-              }
-            : {
-                ...source,
-                id:
-                  source.houseId === houseId
-                    ? source.id
-                    : await stableUuid(`local:category:${houseId}:${source.houseId}:${source.id}`),
-                syncId:
-                  current?.syncId ??
-                  source.syncId ??
-                  (await stableUuid(`remote:category:${houseId}:${source.houseId}:${source.id}`)),
-                houseId,
-                updatedAt: this.runtime.now().toISOString(),
-                deletedAt: undefined,
-              };
-          categoryMap.set(source.id, next.id);
-          await this.save('category', next);
-        }
-        for (const source of products) {
-          const categoryId = categoryMap.get(source.categoryId) ?? source.categoryId;
-          const current = (await this.getRaw('product', source.id)) as Product | undefined;
-          await this.save('product', {
-            ...source,
-            id:
-              source.houseId === houseId
-                ? source.id
-                : await stableUuid(`local:product:${houseId}:${source.houseId}:${source.id}`),
-            syncId:
-              current?.syncId ??
-              source.syncId ??
-              (await stableUuid(`remote:product:${houseId}:${source.houseId}:${source.id}`)),
-            houseId,
-            categoryId,
-            updatedAt: this.runtime.now().toISOString(),
-            deletedAt: undefined,
-          });
-        }
-        for (const source of stores) {
-          const current = (await this.getRaw('store', source.id)) as Store | undefined;
-          await this.save('store', {
-            ...source,
-            id:
-              source.houseId === houseId
-                ? source.id
-                : await stableUuid(`local:store:${houseId}:${source.houseId}:${source.id}`),
-            syncId:
-              current?.syncId ??
-              source.syncId ??
-              (await stableUuid(`remote:store:${houseId}:${source.houseId}:${source.id}`)),
-            houseId,
-            normalizedName: source.normalizedName ?? normalizeCatalogName(source.name),
-            updatedAt: this.runtime.now().toISOString(),
-            deletedAt: undefined,
-          });
-        }
-        await this.setMetadata({ key, value: true, completedAt: this.runtime.now().toISOString() });
-        await this.syncNow(houseId);
-      },
-    };
-  }
-
-  private async unsynced(houseId: string) {
-    return {
-      categories: ((await this.rawList('category', houseId)) as Category[]).filter(
-        (item) => !item.syncId && !item.deletedAt,
-      ),
-      products: ((await this.rawList('product', houseId)) as Product[]).filter(
-        (item) => !item.syncId && !item.deletedAt,
-      ),
-      stores: ((await this.rawList('store', houseId)) as Store[]).filter(
-        (item) => !item.syncId && !item.deletedAt,
-      ),
-    };
-  }
   private storeName(type: CatalogEntityType) {
     return type === 'category'
       ? CASAE_STORES.categories
@@ -576,26 +464,6 @@ export class OfflineFirstCatalogSync {
       void this.syncNow(entry.houseId);
     }, delay);
   }
-  private async getMetadata(key: string) {
-    await this.initialize();
-    const native = await this.database.getNativeDatabase();
-    if (!native) return this.database.getMemoryDatabase().metadata.get(key)?.value === true;
-    const tx = native.transaction(CASAE_STORES.metadata, 'readonly');
-    const value = await requestToPromise(
-      tx.objectStore(CASAE_STORES.metadata).get(key) as IDBRequest<LocalMetadata | undefined>,
-    );
-    await transactionToPromise(tx);
-    return value?.value === true;
-  }
-  private async setMetadata(value: LocalMetadata) {
-    const native = await this.database.getNativeDatabase();
-    if (!native) this.database.getMemoryDatabase().metadata.set(value.key, value);
-    else {
-      const tx = native.transaction(CASAE_STORES.metadata, 'readwrite');
-      tx.objectStore(CASAE_STORES.metadata).put(value);
-      await transactionToPromise(tx);
-    }
-  }
   private emitChanged(houseId: string) {
     this.listeners.get(houseId)?.forEach((listener) => listener.changed());
   }
@@ -631,9 +499,6 @@ class SyncedCategoryRepository implements CategoryRepository {
   getStatus(houseId: string) {
     return this.sync.getStatus(houseId);
   }
-  getLegacyMigration(houseId: string) {
-    return this.sync.getLegacyMigration(houseId);
-  }
 }
 class SyncedProductRepository implements ProductRepository {
   constructor(private readonly sync: OfflineFirstCatalogSync) {}
@@ -657,9 +522,6 @@ class SyncedProductRepository implements ProductRepository {
   }
   getStatus(houseId: string) {
     return this.sync.getStatus(houseId);
-  }
-  getLegacyMigration(houseId: string) {
-    return this.sync.getLegacyMigration(houseId);
   }
 }
 class SyncedStoreRepository implements StoreRepository {
@@ -700,9 +562,6 @@ class SyncedStoreRepository implements StoreRepository {
   getStatus(houseId: string) {
     return this.sync.getStatus(houseId);
   }
-  getLegacyMigration(houseId: string) {
-    return this.sync.getLegacyMigration(houseId);
-  }
 }
 
 function nextTimestamp(previous: string, now: Date) {
@@ -710,14 +569,4 @@ function nextTimestamp(previous: string, now: Date) {
 }
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-async function stableUuid(value: string) {
-  const bytes = new Uint8Array(
-    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)),
-  );
-  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-  const hex = [...bytes.slice(0, 16)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }

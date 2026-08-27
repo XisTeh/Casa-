@@ -208,7 +208,7 @@ describe('OfflineFirstProfileAvatarRepository', () => {
     disconnectPc();
   });
 
-  it('preserva avatar legacy, pergunta uma vez e sincroniza somente após consentimento', async () => {
+  it('preserva avatar local antigo fisicamente sem enviá-lo ao remoto', async () => {
     const backend = new AvatarBackend();
     const legacy = device('legacy', backend, USER_A);
     const local = new LocalProfileAvatarRepository(legacy.database);
@@ -217,21 +217,10 @@ describe('OfflineFirstProfileAvatarRepository', () => {
       avatarSourceBlob: blob('legacy-source'),
       avatarCrop: { zoom: 1.1, centerX: 0.5, centerY: 0.5 },
     });
-    expect(await legacy.repository.hasLegacyCandidate(emptyProfile())).toBe(true);
     expect(backend.profiles.get(USER_A)?.avatarRevision).toBe(0);
-
-    await legacy.repository.dismissLegacy(USER_A);
-    expect(await legacy.repository.hasLegacyCandidate(emptyProfile())).toBe(false);
+    await legacy.repository.syncNow(USER_A);
     expect(await (await legacy.repository.get(USER_A))?.avatarBlob.text()).toBe('legacy-avatar');
-
-    const accepted = device('accepted-legacy', backend, USER_A);
-    await new LocalProfileAvatarRepository(accepted.database).save(USER_A, {
-      avatarBlob: blob('accepted-avatar'),
-      avatarSourceBlob: blob('accepted-source'),
-      avatarCrop: { zoom: 1.3, centerX: 0.4, centerY: 0.6 },
-    });
-    await accepted.repository.syncLegacy(USER_A);
-    expect(backend.profiles.get(USER_A)?.avatarPath).toContain(USER_A);
+    expect(backend.profiles.get(USER_A)?.avatarPath).toBeNull();
   });
 
   it('não permite que o usuário A altere ou remova o avatar de B', async () => {

@@ -6,7 +6,6 @@ import {
   CASAE_DATABASE_VERSION,
   CASAE_STORES,
   CasaeLocalDatabase,
-  type LegacyDatabaseSnapshot,
 } from '../infrastructure/local-database/CasaeLocalDatabase';
 import { LocalBudgetRepository } from '../infrastructure/budget/LocalBudgetRepository';
 import { LocalPurchaseRepository } from '../infrastructure/purchase/LocalPurchaseRepository';
@@ -21,7 +20,7 @@ function databaseName(label: string) {
   return `casae-test-migration-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function legacySnapshot(): LegacyDatabaseSnapshot {
+function legacySnapshot() {
   const shoppingItem: ShoppingListItem = {
     id: 'legacy-list-item',
     houseId: HOUSE_ID,
@@ -75,23 +74,47 @@ function legacySnapshot(): LegacyDatabaseSnapshot {
   };
 }
 
-function emptyLegacySnapshot(): LegacyDatabaseSnapshot {
-  return {
-    shoppingDatabaseFound: false,
-    shoppingSeeded: false,
-    shoppingItems: [],
-    purchaseDatabaseFound: false,
-    purchaseSessions: [],
-    purchaseItems: [],
-  };
-}
-
 function deleteDatabase(name: string) {
   return new Promise<void>((resolve, reject) => {
     const request = indexedDB.deleteDatabase(name);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error(`O banco ${name} permaneceu aberto.`));
+  });
+}
+
+function createSeparateLegacyDatabase(
+  name: string,
+  stores: Array<{ name: string; records: object[] }>,
+) {
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(name, 1);
+    request.onupgradeneeded = () => {
+      for (const storeDefinition of stores) {
+        const store = request.result.createObjectStore(storeDefinition.name, { keyPath: 'id' });
+        storeDefinition.records.forEach((record) => store.put(record));
+      }
+    };
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function countSeparateLegacyRecords(name: string, storeName: string) {
+  return new Promise<number>((resolve, reject) => {
+    const request = indexedDB.open(name);
+    request.onsuccess = () => {
+      const database = request.result;
+      const transaction = database.transaction(storeName, 'readonly');
+      const countRequest = transaction.objectStore(storeName).count();
+      countRequest.onsuccess = () => resolve(countRequest.result);
+      countRequest.onerror = () => reject(countRequest.error);
+      transaction.oncomplete = () => database.close();
+    };
+    request.onerror = () => reject(request.error);
   });
 }
 
@@ -235,98 +258,63 @@ async function createPopulatedVersionThreeDatabase(name: string) {
 }
 
 describe('CasaeLocalDatabase', () => {
-  it('migra Lista, compras e mercado legado uma única vez sem recriar seed', async () => {
-    const name = databaseName('idempotent');
-    const reader = vi.fn(async () => legacySnapshot());
-    const firstDatabase = new CasaeLocalDatabase(name, {
-      migrateLegacy: true,
-      legacyReader: reader,
-    });
-    await firstDatabase.initialize();
-    const shopping = new LocalShoppingRepository(firstDatabase);
-    const purchases = new LocalPurchaseRepository(firstDatabase);
-    const stores = new LocalStoreRepository(firstDatabase);
-    const products = new LocalProductRepository(firstDatabase);
-    const categories = new LocalCategoryRepository(firstDatabase);
-
-    expect((await shopping.list(HOUSE_ID)).map((item) => item.id)).toEqual(['legacy-list-item']);
-    expect(await purchases.listCompletedSessions(HOUSE_ID)).toMatchObject([
-      {
-        id: 'legacy-session',
-        storeId: expect.any(String),
-        items: [{ houseId: HOUSE_ID, storeId: expect.any(String) }],
-      },
-    ]);
-    expect(await stores.list(HOUSE_ID)).toMatchObject([
-      { name: 'Mercado Antigo', houseId: HOUSE_ID },
-    ]);
-    expect(await categories.list(HOUSE_ID)).toHaveLength(11);
-    expect(await products.list(HOUSE_ID)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'Farinha' }),
-        expect.objectContaining({ name: 'Arroz' }),
-      ]),
-    );
-    expect((await shopping.list(HOUSE_ID))[0]).toMatchObject({ productId: expect.any(String) });
-
-    const restoredDatabase = new CasaeLocalDatabase(name, {
-      migrateLegacy: true,
-      legacyReader: reader,
-    });
-    await restoredDatabase.initialize();
-    expect(reader).toHaveBeenCalledTimes(1);
-    expect(
-      await new LocalPurchaseRepository(restoredDatabase).listCompletedSessions(HOUSE_ID),
-    ).toHaveLength(1);
-    expect(await new LocalProductRepository(restoredDatabase).list(HOUSE_ID)).toHaveLength(2);
-    expect(await new LocalCategoryRepository(restoredDatabase).list(HOUSE_ID)).toHaveLength(11);
-  });
-
-  it('preserva uma lista legada vazia sem recriar os itens demonstrativos', async () => {
-    const database = new CasaeLocalDatabase(databaseName('empty-list'), {
-      migrateLegacy: true,
-      legacyReader: async () => ({ ...legacySnapshot(), shoppingItems: [] }),
-    });
-    expect(await new LocalShoppingRepository(database).list(HOUSE_ID)).toEqual([]);
-  });
-
   it('inicializa um IndexedDB novo sem dados demonstrativos no espaço legacy', async () => {
     vi.stubGlobal('indexedDB', fakeIndexedDB);
     vi.stubGlobal('IDBKeyRange', FakeIDBKeyRange);
-    const reader = vi.fn(async () => emptyLegacySnapshot());
-    const database = new CasaeLocalDatabase(databaseName('clean-install'), {
-      migrateLegacy: true,
-      legacyReader: reader,
-    });
+    const database = new CasaeLocalDatabase(databaseName('clean-install'));
 
     await database.initialize();
 
     await expectLegacyDomainsEmpty(database);
-    expect(reader).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignora bancos separados antigos sem apagar seus registros', async () => {
+    vi.stubGlobal('indexedDB', fakeIndexedDB);
+    vi.stubGlobal('IDBKeyRange', FakeIDBKeyRange);
+    const shoppingDatabaseName = 'casae-shopping-list';
+    const purchaseDatabaseName = 'casae-purchases';
+    const snapshot = legacySnapshot();
+    await deleteDatabase(shoppingDatabaseName);
+    await deleteDatabase(purchaseDatabaseName);
+    await createSeparateLegacyDatabase(shoppingDatabaseName, [
+      { name: 'shopping-items', records: snapshot.shoppingItems },
+    ]);
+    await createSeparateLegacyDatabase(purchaseDatabaseName, [
+      { name: 'purchase-sessions', records: snapshot.purchaseSessions },
+      { name: 'purchase-items', records: snapshot.purchaseItems },
+    ]);
+
+    const database = new CasaeLocalDatabase(databaseName('separate-legacy-databases'));
+    await database.initialize();
+
+    await expectLegacyDomainsEmpty(database);
+    await expect(countSeparateLegacyRecords(shoppingDatabaseName, 'shopping-items')).resolves.toBe(
+      1,
+    );
+    await expect(
+      countSeparateLegacyRecords(purchaseDatabaseName, 'purchase-sessions'),
+    ).resolves.toBe(1);
+    await expect(countSeparateLegacyRecords(purchaseDatabaseName, 'purchase-items')).resolves.toBe(
+      1,
+    );
+    await deleteDatabase(shoppingDatabaseName);
+    await deleteDatabase(purchaseDatabaseName);
   });
 
   it('continua vazio ao recriar o IndexedDB depois de limpar os dados do site', async () => {
     vi.stubGlobal('indexedDB', fakeIndexedDB);
     vi.stubGlobal('IDBKeyRange', FakeIDBKeyRange);
     const name = databaseName('clear-and-reopen');
-    const reader = vi.fn(async () => emptyLegacySnapshot());
-    const firstDatabase = new CasaeLocalDatabase(name, {
-      migrateLegacy: true,
-      legacyReader: reader,
-    });
+    const firstDatabase = new CasaeLocalDatabase(name);
     await firstDatabase.initialize();
     await expectLegacyDomainsEmpty(firstDatabase);
     (await firstDatabase.getNativeDatabase())?.close();
     await deleteDatabase(name);
 
-    const reopenedDatabase = new CasaeLocalDatabase(name, {
-      migrateLegacy: true,
-      legacyReader: reader,
-    });
+    const reopenedDatabase = new CasaeLocalDatabase(name);
     await reopenedDatabase.initialize();
 
     await expectLegacyDomainsEmpty(reopenedDatabase);
-    expect(reader).toHaveBeenCalledTimes(2);
   });
 
   it('atualiza a versão 2 para a 5 preservando dados e adicionando orçamentos', async () => {

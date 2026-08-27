@@ -1,6 +1,4 @@
-import { LEGACY_HOUSE_ID } from '../../domain/house';
 import type {
-  LegacyShoppingMigration,
   ShoppingListItem,
   ShoppingListItemUpdate,
   ShoppingSyncOutboxEntry,
@@ -13,7 +11,6 @@ import {
   CasaeLocalDatabase,
   requestToPromise,
   transactionToPromise,
-  type LocalMetadata,
 } from '../local-database/CasaeLocalDatabase';
 import { LocalShoppingRepository } from './LocalShoppingRepository';
 
@@ -60,14 +57,6 @@ function wins(first: ShoppingListItem, second: ShoppingListItem) {
 
 function nextTimestamp(previous: string, now: Date) {
   return new Date(Math.max(now.getTime(), new Date(previous).getTime() + 1)).toISOString();
-}
-
-function makeUuid() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
-    const random = Math.floor(Math.random() * 16);
-    return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16);
-  });
 }
 
 export class OfflineFirstShoppingRepository implements OnlineShoppingListRepository {
@@ -184,40 +173,6 @@ export class OfflineFirstShoppingRepository implements OnlineShoppingListReposit
     this.running.set(houseId, task);
     void this.emitStatus(houseId);
     return task;
-  }
-
-  async getLegacyMigration(houseId: string): Promise<LegacyShoppingMigration | null> {
-    const key = `shopping-list-imported:${houseId}`;
-    if (await this.getMetadata(key)) return null;
-    const legacy = await this.local.list(LEGACY_HOUSE_ID);
-    if (!legacy.length || houseId === LEGACY_HOUSE_ID) return null;
-    return {
-      count: legacy.length,
-      importIntoHouse: async () => {
-        const timestamp = this.runtime.now().toISOString();
-        for (const item of legacy) {
-          await this.writeLocal(
-            {
-              ...item,
-              id: makeUuid(),
-              houseId,
-              productId: undefined,
-              categoryId: undefined,
-              houseProductId: undefined,
-              createdAt: timestamp,
-              updatedAt: timestamp,
-              deletedAt: undefined,
-              addedByMemberId: this.currentUserId,
-              updatedByMemberId: this.currentUserId,
-            },
-            'upsert',
-          );
-        }
-        await this.setMetadata({ key, value: true, completedAt: timestamp });
-        this.emitChanged(houseId);
-        await this.syncNow(houseId);
-      },
-    };
   }
 
   private async performSync(houseId: string) {
@@ -400,30 +355,6 @@ export class OfflineFirstShoppingRepository implements OnlineShoppingListReposit
       this.runtime.cancel(timer);
       void this.syncNow(entry.houseId);
     }, delay);
-  }
-
-  private async getMetadata(key: string) {
-    await this.initialize();
-    const native = await this.database.getNativeDatabase();
-    if (!native) return this.database.getMemoryDatabase().metadata.get(key)?.value === true;
-    const transaction = native.transaction(CASAE_STORES.metadata, 'readonly');
-    const value = await requestToPromise(
-      transaction.objectStore(CASAE_STORES.metadata).get(key) as IDBRequest<
-        LocalMetadata | undefined
-      >,
-    );
-    await transactionToPromise(transaction);
-    return value?.value === true;
-  }
-
-  private async setMetadata(value: LocalMetadata) {
-    const native = await this.database.getNativeDatabase();
-    if (!native) this.database.getMemoryDatabase().metadata.set(value.key, value);
-    else {
-      const transaction = native.transaction(CASAE_STORES.metadata, 'readwrite');
-      transaction.objectStore(CASAE_STORES.metadata).put(value);
-      await transactionToPromise(transaction);
-    }
   }
 
   private emitChanged(houseId: string) {

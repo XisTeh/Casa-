@@ -1,9 +1,4 @@
-import type {
-  LegacyShoppingMigration,
-  ShoppingListItem,
-  ShoppingListItemUpdate,
-  ShoppingSyncStatus,
-} from './shopping-list';
+import type { ShoppingListItem, ShoppingListItemUpdate, ShoppingSyncStatus } from './shopping-list';
 
 export interface ShoppingListRepository {
   initialize(): Promise<void>;
@@ -33,7 +28,6 @@ export interface OnlineShoppingListRepository extends ShoppingListRepository {
   ): () => void;
   syncNow(houseId: string): Promise<void>;
   getStatus(houseId: string): Promise<ShoppingSyncStatus>;
-  getLegacyMigration(houseId: string): Promise<LegacyShoppingMigration | null>;
 }
 
 export function isOnlineShoppingListRepository(

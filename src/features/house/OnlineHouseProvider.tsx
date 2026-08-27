@@ -23,7 +23,6 @@ export function OnlineHouseProvider({
   const [snapshot, setSnapshot] = useState<OnlineHouseholdSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [legacyAvatar, setLegacyAvatar] = useState(false);
   const profileSubscriptionKey =
     snapshot?.members
       .map((member) => member.id)
@@ -56,18 +55,6 @@ export function OnlineHouseProvider({
     );
     return () => disconnect.forEach((remove) => remove());
   }, [profileSubscriptionKey, service, userId]);
-
-  useEffect(() => {
-    if (!snapshot) return;
-    if (typeof service.hasLegacyAvatar !== 'function') return;
-    let active = true;
-    void service
-      .hasLegacyAvatar(snapshot.profile)
-      .then((found) => active && setLegacyAvatar(found));
-    return () => {
-      active = false;
-    };
-  }, [service, snapshot]);
 
   const run = useCallback(async (operation: () => Promise<OnlineHouseholdSnapshot>) => {
     try {
@@ -119,14 +106,8 @@ export function OnlineHouseProvider({
         run(() => service.removeMember(userId, activeHouse.id, memberId)),
       createInvite: () => service.createInvite(activeHouse.id),
       joinHouse: (token: string) => run(() => service.acceptInvite(userId, token)),
-      legacyAvatarAvailable: legacyAvatar,
-      importLegacyAvatar: async () => {
-        const loaded = await service.syncLegacyAvatar(userId);
-        setSnapshot(loaded);
-        setLegacyAvatar(false);
-      },
     };
-  }, [email, error, isLoading, legacyAvatar, run, service, snapshot, userId]);
+  }, [email, error, isLoading, run, service, snapshot, userId]);
 
   if (isLoading || !snapshot)
     return error ? (

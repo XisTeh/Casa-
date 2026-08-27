@@ -27,7 +27,6 @@ import { JoinHouseDialog } from './JoinHouseDialog';
 import type { HouseInviteReceipt } from '../../domain/online-house';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
-import { LegacyDataRecoverySection } from './LegacyDataRecoverySection';
 import { useShoppingList } from '../shopping-list/ShoppingListContext';
 import { useProducts } from '../products/ProductContext';
 import { usePurchase } from '../purchase/PurchaseContext';
@@ -259,18 +258,6 @@ export function SettingsPage() {
           )}
         </section>
       </div>
-      <LegacyDataRecoverySection
-        avatarAvailable={household.legacyAvatarAvailable === true}
-        catalog={products.legacyMigration}
-        houseId={activeHouse.id}
-        importAvatar={household.importLegacyAvatar}
-        importCatalog={products.importLegacyCatalog}
-        importPurchases={purchases.importLegacyPurchases}
-        importShopping={shopping.importLegacyItems}
-        profileId={activeMember.id}
-        purchases={purchases.legacyMigration}
-        shopping={shopping.legacyMigration}
-      />
       <section className="settings-card settings-app" id="aplicativo">
         <header>
           <span className="settings-card__icon">

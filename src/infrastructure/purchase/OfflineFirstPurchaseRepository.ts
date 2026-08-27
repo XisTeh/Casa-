@@ -5,12 +5,10 @@ import type {
 } from '../../domain/purchase';
 import type { PurchaseRepository } from '../../domain/purchase-repository';
 import type {
-  LegacyPurchaseMigration,
   PurchaseSyncEntityType,
   PurchaseSyncOutboxEntry,
   PurchaseSyncRepository,
 } from '../../domain/purchase-sync';
-import { LEGACY_HOUSE_ID } from '../../domain/house';
 import type { ShoppingSyncStatus } from '../../domain/shopping-list';
 import type { ShoppingSyncRuntime } from '../shopping/OfflineFirstShoppingRepository';
 import type {
@@ -22,7 +20,6 @@ import {
   CasaeLocalDatabase,
   requestToPromise,
   transactionToPromise,
-  type LocalMetadata,
 } from '../local-database/CasaeLocalDatabase';
 import { LocalPurchaseRepository } from './LocalPurchaseRepository';
 
@@ -232,60 +229,6 @@ export class OfflineFirstPurchaseRepository implements PurchaseRepository, Purch
     } while (this.dirty.delete(houseId));
   }
 
-  async getLegacyMigration(houseId: string): Promise<LegacyPurchaseMigration | null> {
-    const key = `purchase-history-imported:${houseId}`;
-    if (await this.getMetadata(key)) return null;
-    const legacy =
-      houseId === LEGACY_HOUSE_ID
-        ? { sessions: [], items: [] }
-        : await this.unsyncedCompleted(LEGACY_HOUSE_ID);
-    const sessions = legacy.sessions;
-    const sessionIds = new Set(sessions.map((session) => session.id));
-    const items = legacy.items.filter((item) => sessionIds.has(item.purchaseSessionId));
-    if (!sessions.length) {
-      await this.setMetadata({ key, value: true, completedAt: this.runtime.now().toISOString() });
-      return null;
-    }
-    return {
-      sessions: sessions.length,
-      items: items.filter((item) => !item.deletedAt).length,
-      importIntoHouse: async () => {
-        if (await this.getMetadata(key)) return;
-        for (const source of sessions) {
-          const preparedSession: PersistedPurchaseSession = {
-            ...source,
-            houseId,
-            syncId:
-              source.syncId ??
-              (await stableUuid(
-                `remote:purchase-session:${houseId}:${source.houseId}:${source.id}`,
-              )),
-            deletedAt: undefined,
-          };
-          const preparedItems = await Promise.all(
-            items
-              .filter((item) => item.purchaseSessionId === source.id)
-              .map(async (item) => ({
-                ...item,
-                houseId,
-                syncId:
-                  item.syncId ??
-                  (await stableUuid(`remote:purchase-item:${houseId}:${item.houseId}:${item.id}`)),
-              })),
-          );
-          await this.stageLegacySession(preparedSession, preparedItems);
-        }
-        await this.setMetadata({
-          key,
-          value: true,
-          completedAt: this.runtime.now().toISOString(),
-        });
-        this.changed(houseId);
-        await this.syncNow(houseId);
-      },
-    };
-  }
-
   private async performSync(houseId: string) {
     if (!this.runtime.isOnline()) return;
     try {
@@ -461,17 +404,6 @@ export class OfflineFirstPurchaseRepository implements PurchaseRepository, Purch
   private async pull(houseId: string) {
     const snapshot = await this.remote.list(houseId);
     await this.reconcileRemoteSnapshot(houseId, snapshot);
-  }
-
-  private async unsyncedCompleted(houseId: string) {
-    const sessions = (await this.local.listPersistedSessions(houseId)).filter(
-      (session) => session.status === 'completed' && !session.syncId && !session.deletedAt,
-    );
-    const sessionIds = new Set(sessions.map((session) => session.id));
-    const items = (await this.local.listPersistedItems(houseId)).filter((item) =>
-      sessionIds.has(item.purchaseSessionId),
-    );
-    return { sessions, items };
   }
 
   private async restoreActorPending(houseId: string) {
@@ -734,34 +666,6 @@ export class OfflineFirstPurchaseRepository implements PurchaseRepository, Purch
     };
   }
 
-  private async stageLegacySession(session: PersistedPurchaseSession, items: PurchaseItem[]) {
-    const sessionEntry = this.createOutboxEntry('purchase-session', session);
-    const itemEntries = items.map((item) => this.createOutboxEntry('purchase-item', item));
-    const native = await this.database.getNativeDatabase();
-    if (!native) {
-      const memory = this.database.getMemoryDatabase();
-      memory.purchaseSessions.set(session.id, clone(session));
-      memory.syncOutbox.set(sessionEntry.id, clone(sessionEntry));
-      items.forEach((item, index) => {
-        memory.purchaseItems.set(item.id, clone(item));
-        memory.syncOutbox.set(itemEntries[index]!.id, clone(itemEntries[index]!));
-      });
-    } else {
-      const transaction = native.transaction(
-        [CASAE_STORES.purchaseSessions, CASAE_STORES.purchaseItems, CASAE_STORES.syncOutbox],
-        'readwrite',
-      );
-      transaction.objectStore(CASAE_STORES.purchaseSessions).put(session);
-      transaction.objectStore(CASAE_STORES.syncOutbox).put(sessionEntry);
-      items.forEach((item, index) => {
-        transaction.objectStore(CASAE_STORES.purchaseItems).put(item);
-        transaction.objectStore(CASAE_STORES.syncOutbox).put(itemEntries[index]!);
-      });
-      await transactionToPromise(transaction);
-    }
-    await this.emitStatus(session.houseId);
-  }
-
   private async listOutbox(houseId: string): Promise<PurchaseSyncOutboxEntry[]> {
     const native = await this.database.getNativeDatabase();
     const values = native
@@ -841,30 +745,6 @@ export class OfflineFirstPurchaseRepository implements PurchaseRepository, Purch
     }, delay);
   }
 
-  private async getMetadata(key: string) {
-    await this.initialize();
-    const native = await this.database.getNativeDatabase();
-    if (!native) return this.database.getMemoryDatabase().metadata.get(key)?.value === true;
-    const transaction = native.transaction(CASAE_STORES.metadata, 'readonly');
-    const value = await requestToPromise(
-      transaction.objectStore(CASAE_STORES.metadata).get(key) as IDBRequest<
-        LocalMetadata | undefined
-      >,
-    );
-    await transactionToPromise(transaction);
-    return value?.value === true;
-  }
-
-  private async setMetadata(value: LocalMetadata) {
-    const native = await this.database.getNativeDatabase();
-    if (!native) this.database.getMemoryDatabase().metadata.set(value.key, value);
-    else {
-      const transaction = native.transaction(CASAE_STORES.metadata, 'readwrite');
-      transaction.objectStore(CASAE_STORES.metadata).put(value);
-      await transactionToPromise(transaction);
-    }
-  }
-
   private nextTimestamp(previous: string) {
     const now = this.runtime.now().toISOString();
     return now > previous ? now : new Date(new Date(previous).getTime() + 1).toISOString();
@@ -878,14 +758,4 @@ export class OfflineFirstPurchaseRepository implements PurchaseRepository, Purch
     const status = await this.getStatus(houseId);
     this.listeners.get(houseId)?.forEach((listener) => listener.status?.(status));
   }
-}
-
-async function stableUuid(value: string) {
-  const bytes = new Uint8Array(
-    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)),
-  );
-  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-  const hex = [...bytes.slice(0, 16)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }

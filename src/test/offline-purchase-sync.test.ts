@@ -446,7 +446,7 @@ describe('OfflineFirstPurchaseRepository', () => {
     unsubscribe();
   });
 
-  it('só importa compras antigas após confirmação e mantém IDs e snapshots sem duplicar', async () => {
+  it('ignora histórico do LEGACY_HOUSE_ID sem misturar ou enviar para a Casa atual', async () => {
     const backend = new RemoteBackend();
     const runtime = new Runtime();
     const device = services('legacy', backend, USER_A, runtime);
@@ -483,34 +483,21 @@ describe('OfflineFirstPurchaseRepository', () => {
       updatedAt: completedAt,
     });
 
-    const migration = await device.repository.getLegacyMigration(HOUSE);
-    expect(migration).toMatchObject({ sessions: 1, items: 1 });
-    expect(backend.sessions.size).toBe(0);
-    await migration!.importIntoHouse();
     await device.repository.syncNow(HOUSE);
-    expect(await device.service.listCompletedSessions(HOUSE)).toEqual([
-      expect.objectContaining({
-        id: expect.stringMatching(/^[0-9a-f-]{36}$/),
-        legacyId: 'legacy-session',
-        storeNameSnapshot: 'Mercado antigo',
-        purchasedByNameSnapshot: 'Janifer antiga',
-      }),
-    ]);
-    expect(backend.sessions.size).toBe(1);
-    expect(backend.items.size).toBe(1);
-    expect(await device.repository.getLegacyMigration(HOUSE)).toBeNull();
-    await migration!.importIntoHouse();
-    expect(backend.sessions.size).toBe(1);
-    expect(backend.items.size).toBe(1);
+    expect(await device.service.listCompletedSessions(HOUSE)).toEqual([]);
+    expect(await local.listCompletedSessions(LEGACY_HOUSE_ID)).toHaveLength(1);
+    expect(backend.sessions.size).toBe(0);
+    expect(backend.items.size).toBe(0);
   });
 
-  it('não classifica compra concluída da Casa atual como legacy', async () => {
+  it('mantém compra concluída da Casa atual no read model moderno', async () => {
     const backend = new RemoteBackend();
     const device = services('current-house-not-legacy', backend, USER_A, new Runtime());
     const local = new LocalPurchaseRepository(device.database);
     const completedAt = '2026-07-20T18:00:00.000Z';
     await local.putPersistedSession({
       id: 'current-session',
+      syncId: 'current-session',
       houseId: HOUSE,
       storeNameSnapshot: 'Mercado atual',
       status: 'completed',
@@ -521,7 +508,7 @@ describe('OfflineFirstPurchaseRepository', () => {
       updatedAt: completedAt,
     });
 
-    expect(await device.repository.getLegacyMigration(HOUSE)).toBeNull();
+    expect(await device.service.listCompletedSessions(HOUSE)).toHaveLength(1);
   });
 
   it('propaga Realtime ao acompanhante, mantém edição exclusiva e preserva a compra concluída', async () => {
@@ -1053,7 +1040,6 @@ describe('OfflineFirstPurchaseRepository', () => {
       expect(await rawLocal.listPersistedSessions(HOUSE)).not.toEqual(
         expect.arrayContaining([expect.objectContaining({ id: 'old-ghost-session' })]),
       );
-      expect(await upgradedRepository.getLegacyMigration(HOUSE)).toBeNull();
     } finally {
       vi.unstubAllGlobals();
     }

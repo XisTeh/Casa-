@@ -117,7 +117,7 @@ beforeEach(() => {
 });
 
 describe('sincronização offline-first da Lista', () => {
-  it('não classifica uma outbox offline atual como dados legacy', async () => {
+  it('mantém uma outbox offline atual funcionando normalmente', async () => {
     vi.stubGlobal('indexedDB', undefined);
     const runtime = new TestRuntime();
     const remote = new FakeRemoteShoppingStore();
@@ -132,7 +132,6 @@ describe('sincronização offline-first da Lista', () => {
     await service.create(input('Item offline atual'), actor());
 
     expect(await repository.getStatus(HOUSE_A)).toMatchObject({ state: 'offline', pending: 1 });
-    expect(await repository.getLegacyMigration(HOUSE_A)).toBeNull();
   });
 
   it('persiste e compacta create/update/delete offline, retoma no reload e envia tombstone uma vez', async () => {
@@ -234,7 +233,7 @@ describe('sincronização offline-first da Lista', () => {
     expect(changedB).not.toHaveBeenCalled();
   });
 
-  it('não envia dados legados antes do consentimento e preserva os originais após importar', async () => {
+  it('ignora dados do LEGACY_HOUSE_ID sem misturar ou enviar para a Casa atual', async () => {
     const runtime = new TestRuntime();
     const remote = new FakeRemoteShoppingStore();
     const database = new CasaeLocalDatabase(databaseName('legacy'), { migrateLegacy: false });
@@ -243,19 +242,15 @@ describe('sincronização offline-first da Lista', () => {
     const local = new LocalShoppingRepository(database);
     await local.create(initialShoppingListSeed[0]!);
     const legacyBefore = await local.list(LEGACY_HOUSE_ID);
-    const migration = await repository.getLegacyMigration(HOUSE_A);
+    runtime.online = true;
+    await repository.syncNow(HOUSE_A);
 
-    expect(migration?.count).toBe(legacyBefore.length);
     expect(await repository.list(HOUSE_A)).toEqual([]);
     expect(remote.applyCalls).toEqual([]);
-    await migration?.importIntoHouse();
-
-    expect(await repository.list(HOUSE_A)).toHaveLength(legacyBefore.length);
     expect(await new LocalShoppingRepository(database).list(LEGACY_HOUSE_ID)).toHaveLength(
       legacyBefore.length,
     );
-    expect(await repository.getStatus(HOUSE_A)).toMatchObject({ pending: legacyBefore.length });
-    expect(await repository.getLegacyMigration(HOUSE_A)).toBeNull();
+    expect(await repository.getStatus(HOUSE_A)).toMatchObject({ pending: 0 });
   });
 
   it('não envia a outbox de uma conta usando a sessão de outra conta no mesmo dispositivo', async () => {

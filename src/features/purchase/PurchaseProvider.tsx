@@ -13,7 +13,6 @@ import { useStores } from '../stores/StoreContext';
 import { useProducts } from '../products/ProductContext';
 import { purchaseContext } from './PurchaseContext';
 import { useHousehold } from '../house/HouseContext';
-import type { LegacyPurchaseMigration } from '../../domain/purchase-sync';
 
 type PurchaseProviderProps = { children: ReactNode; service?: PurchaseService };
 
@@ -40,11 +39,6 @@ export function PurchaseProvider({
   const [syncStatus, setSyncStatus] = useState<ShoppingSyncStatus>({ state: 'local', pending: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [legacyCandidate, setLegacyCandidate] = useState<{
-    houseId: string;
-    migration: LegacyPurchaseMigration;
-  } | null>(null);
-
   const refreshPurchases = useCallback(async () => {
     const [sessions, completed] = await Promise.all([
       service.listActiveSessions(activeHouse.id),
@@ -76,11 +70,6 @@ export function PurchaseProvider({
     void service
       .syncNow(activeHouse.id)
       .then(refreshPurchases)
-      .then(() => service.getLegacyMigration(activeHouse.id))
-      .then(
-        (migration) =>
-          current && setLegacyCandidate(migration ? { houseId: activeHouse.id, migration } : null),
-      )
       .catch(() => current && setError('Não foi possível abrir as compras locais.'))
       .finally(() => current && setIsLoading(false));
     return () => {
@@ -185,15 +174,6 @@ export function PurchaseProvider({
     select,
     service,
   ]);
-  const legacyMigration =
-    legacyCandidate?.houseId === activeHouse.id ? legacyCandidate.migration : null;
-  const importLegacyPurchases = useCallback(async () => {
-    if (!legacyMigration) return;
-    await legacyMigration.importIntoHouse();
-    await refreshPurchases();
-    setLegacyCandidate(null);
-  }, [legacyMigration, refreshPurchases]);
-
   const value = useMemo(
     () => ({
       activeSession,
@@ -214,8 +194,6 @@ export function PurchaseProvider({
       removePurchaseItem,
       cancelPurchase,
       completePurchase,
-      legacyMigration,
-      importLegacyPurchases,
     }),
     [
       activeMember.id,
@@ -226,10 +204,8 @@ export function PurchaseProvider({
       completePurchase,
       completedSessions,
       error,
-      importLegacyPurchases,
       isLoading,
       markPurchased,
-      legacyMigration,
       removePurchaseItem,
       select,
       startPurchase,

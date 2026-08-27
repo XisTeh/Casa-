@@ -18,13 +18,6 @@ export type CatalogSyncOutboxEntry = {
   nextAttemptAt?: string;
 };
 
-export type LegacyCatalogMigration = {
-  categories: number;
-  products: number;
-  stores: number;
-  importIntoHouse(): Promise<void>;
-};
-
 export interface CatalogSyncRepository {
   subscribe(
     houseId: string,
@@ -33,9 +26,8 @@ export interface CatalogSyncRepository {
   ): () => void;
   syncNow(houseId: string): Promise<void>;
   getStatus(houseId: string): Promise<ShoppingSyncStatus>;
-  getLegacyMigration(houseId: string): Promise<LegacyCatalogMigration | null>;
 }
 
 export function isCatalogSyncRepository(value: object): value is object & CatalogSyncRepository {
-  return 'syncNow' in value && 'subscribe' in value && 'getLegacyMigration' in value;
+  return 'syncNow' in value && 'subscribe' in value;
 }

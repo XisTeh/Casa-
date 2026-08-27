@@ -87,11 +87,6 @@ export type ShoppingSyncStatus = {
   pending: number;
 };
 
-export type LegacyShoppingMigration = {
-  count: number;
-  importIntoHouse(): Promise<void>;
-};
-
 export type NewShoppingListItem = Pick<
   ShoppingListItem,
   'productName' | 'quantity' | 'unit' | 'category' | 'preferredBrand' | 'notes' | 'priority'

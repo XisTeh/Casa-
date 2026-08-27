@@ -26,8 +26,6 @@ export type HouseContextValue = {
   removeMember(memberId: string): Promise<void>;
   createInvite?(): Promise<HouseInviteReceipt>;
   joinHouse?(token: string): Promise<void>;
-  legacyAvatarAvailable?: boolean;
-  importLegacyAvatar?(): Promise<void>;
 };
 
 export const houseContext = createContext<HouseContextValue | null>(null);

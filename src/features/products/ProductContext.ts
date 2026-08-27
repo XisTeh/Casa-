@@ -6,7 +6,6 @@ import type {
   ProductWithLastPurchase,
 } from '../../domain/catalog';
 import type { ShoppingSyncStatus } from '../../domain/shopping-list';
-import type { LegacyCatalogMigration } from '../../domain/catalog-sync';
 
 export type ProductContextValue = {
   products: ProductWithLastPurchase[];
@@ -23,8 +22,6 @@ export type ProductContextValue = {
   renameCategory: (id: string, name: string) => Promise<void>;
   setCategoryActive: (id: string, active: boolean) => Promise<void>;
   refreshProducts: () => Promise<void>;
-  legacyMigration: LegacyCatalogMigration | null;
-  importLegacyCatalog: () => Promise<void>;
 };
 
 export const productContext = createContext<ProductContextValue | null>(null);

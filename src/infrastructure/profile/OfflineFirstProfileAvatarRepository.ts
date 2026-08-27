@@ -9,7 +9,6 @@ import {
   CasaeLocalDatabase,
   requestToPromise,
   transactionToPromise,
-  type LocalMetadata,
 } from '../local-database/CasaeLocalDatabase';
 import { LocalProfileAvatarRepository } from './LocalProfileAvatarRepository';
 
@@ -32,7 +31,6 @@ const defaultRuntime: ShoppingSyncRuntime = {
 };
 
 const outboxId = (profileId: string) => `profile-avatar:${profileId}`;
-const dismissedKey = (profileId: string) => `profile-avatar-legacy-dismissed:${profileId}`;
 
 export class OfflineFirstProfileAvatarRepository implements ProfileAvatarRepository {
   private readonly local: LocalProfileAvatarRepository;
@@ -96,7 +94,6 @@ export class OfflineFirstProfileAvatarRepository implements ProfileAvatarReposit
       await this.local.save(profileId, null);
     }
     await this.enqueue(mutation);
-    await this.writeMetadata(dismissedKey(profileId), true);
     this.changed(profileId);
     await this.syncNow(profileId);
   }
@@ -188,28 +185,6 @@ export class OfflineFirstProfileAvatarRepository implements ProfileAvatarReposit
         this.disconnectByProfile.delete(profileId);
       }
     };
-  }
-
-  async hasLegacyCandidate(profile: UserProfile) {
-    if (profile.avatarRevision > 0 || profile.avatarPath) return false;
-    if (await this.getOutbox(profile.id)) return false;
-    if ((await this.readMetadata(dismissedKey(profile.id)))?.value === true) return false;
-    const local = await this.local.get(profile.id);
-    return Boolean(local && (!local.avatarSyncState || local.avatarSyncState === 'local-only'));
-  }
-
-  async syncLegacy(profileId: string) {
-    const avatar = await this.local.get(profileId);
-    if (!avatar) return;
-    await this.save(profileId, {
-      avatarBlob: avatar.avatarBlob,
-      avatarSourceBlob: avatar.avatarSourceBlob ?? avatar.avatarBlob,
-      avatarCrop: avatar.avatarCrop ?? { zoom: 1, centerX: 0.5, centerY: 0.5 },
-    });
-  }
-
-  dismissLegacy(profileId: string) {
-    return this.writeMetadata(dismissedKey(profileId), true);
   }
 
   syncNow(profileId: string) {
@@ -381,30 +356,6 @@ export class OfflineFirstProfileAvatarRepository implements ProfileAvatarReposit
       return crypto.getRandomValues(new Uint16Array(1))[0]! % 1000;
     }
     return Math.floor(Math.random() * 1000);
-  }
-
-  private async readMetadata(key: string) {
-    const native = await this.database.getNativeDatabase();
-    if (!native) return this.database.getMemoryDatabase().metadata.get(key);
-    const transaction = native.transaction(CASAE_STORES.metadata, 'readonly');
-    const value = await requestToPromise(
-      transaction.objectStore(CASAE_STORES.metadata).get(key) as IDBRequest<
-        LocalMetadata | undefined
-      >,
-    );
-    await transactionToPromise(transaction);
-    return value;
-  }
-
-  private async writeMetadata(key: string, value: boolean) {
-    const metadata: LocalMetadata = { key, value, completedAt: this.runtime.now().toISOString() };
-    const native = await this.database.getNativeDatabase();
-    if (!native) this.database.getMemoryDatabase().metadata.set(key, metadata);
-    else {
-      const transaction = native.transaction(CASAE_STORES.metadata, 'readwrite');
-      transaction.objectStore(CASAE_STORES.metadata).put(metadata);
-      await transactionToPromise(transaction);
-    }
   }
 
   private changed(profileId: string) {

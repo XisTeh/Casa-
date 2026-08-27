@@ -6,7 +6,6 @@ import type {
 } from '../../domain/purchase';
 import type { ShoppingListItem, ShoppingSyncStatus } from '../../domain/shopping-list';
 import type { Store } from '../../domain/store';
-import type { LegacyPurchaseMigration } from '../../domain/purchase-sync';
 
 export type PurchaseContextValue = {
   activeSession: PurchaseSession | null;
@@ -35,8 +34,6 @@ export type PurchaseContextValue = {
   removePurchaseItem: (itemId: string) => Promise<PurchaseSession>;
   cancelPurchase: () => Promise<PurchaseSession>;
   completePurchase: () => Promise<PurchaseSession>;
-  legacyMigration: LegacyPurchaseMigration | null;
-  importLegacyPurchases: () => Promise<void>;
 };
 
 export const purchaseContext = createContext<PurchaseContextValue | null>(null);

@@ -127,10 +127,4 @@ export class ShoppingListService {
       ? this.repository.getStatus(houseId)
       : ({ state: 'local', pending: 0 } as const);
   }
-
-  async getLegacyMigration(houseId: string) {
-    return isOnlineShoppingListRepository(this.repository)
-      ? this.repository.getLegacyMigration(houseId)
-      : null;
-  }
 }

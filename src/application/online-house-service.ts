@@ -215,19 +215,6 @@ export class OnlineHouseService {
     return this.avatars.subscribe?.(userId, changed) ?? (() => undefined);
   }
 
-  hasLegacyAvatar(profile: UserProfile) {
-    return this.avatars.hasLegacyCandidate?.(profile) ?? Promise.resolve(false);
-  }
-
-  async syncLegacyAvatar(userId: string) {
-    await this.avatars.syncLegacy?.(userId);
-    return this.getSnapshot(userId);
-  }
-
-  dismissLegacyAvatar(userId: string) {
-    return this.avatars.dismissLegacy?.(userId) ?? Promise.resolve();
-  }
-
   private async ensureSnapshotCategories(snapshot: OnlineHouseholdSnapshot) {
     if (snapshot.activeHouse) {
       await this.categories?.ensureDefaultCategoriesForHouse(snapshot.activeHouse.id);
