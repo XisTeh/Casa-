@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfileAvatar } from '../components/ProfileAvatar/ProfileAvatar';
 
@@ -26,5 +27,31 @@ describe('ProfileAvatar', () => {
     );
     rerender(<ProfileAvatar profile={{ displayName: 'Raabe Silva', avatarBlob }} />);
     expect(screen.getByRole('img', { name: 'Foto de perfil de Raabe Silva' })).toBeVisible();
+  });
+
+  it('mantém uma object URL válida durante o replay de efeitos do Strict Mode', () => {
+    const created: string[] = [];
+    const revoked = new Set<string>();
+    vi.mocked(URL.createObjectURL).mockImplementation(() => {
+      const next = `blob:avatar-${created.length + 1}`;
+      created.push(next);
+      return next;
+    });
+    vi.mocked(URL.revokeObjectURL).mockImplementation((url) => revoked.add(url));
+
+    const { unmount } = render(
+      <StrictMode>
+        <ProfileAvatar profile={{ displayName: 'Raabe', avatarBlob: new Blob(['foto']) }} />
+      </StrictMode>,
+    );
+
+    const currentUrl = screen
+      .getByRole('img', { name: 'Foto de perfil de Raabe' })
+      .getAttribute('src');
+    expect(created.length).toBeGreaterThanOrEqual(2);
+    expect(currentUrl).toBe(created.at(-1));
+    expect(revoked.has(currentUrl!)).toBe(false);
+    unmount();
+    expect(revoked.has(currentUrl!)).toBe(true);
   });
 });

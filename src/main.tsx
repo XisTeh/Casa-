@@ -13,6 +13,9 @@ if (import.meta.env.DEV) {
   void import('./infrastructure/purchase/purchaseDiagnostics').then(
     ({ installPurchaseDiagnostics }) => installPurchaseDiagnostics(),
   );
+  void import('./infrastructure/profile/profileAvatarDiagnostics').then(
+    ({ installProfileAvatarDiagnostics }) => installProfileAvatarDiagnostics(),
+  );
 }
 
 pwaInstallManager.start();

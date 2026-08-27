@@ -8,6 +8,10 @@ export type Database = {
           id: string;
           display_name: string;
           avatar_path: string | null;
+          avatar_source_path: string | null;
+          avatar_crop: Json | null;
+          avatar_revision: number;
+          avatar_updated_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -15,10 +19,22 @@ export type Database = {
           id: string;
           display_name: string;
           avatar_path?: string | null;
+          avatar_source_path?: string | null;
+          avatar_crop?: Json | null;
+          avatar_revision?: number;
+          avatar_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
-        Update: { display_name?: string; avatar_path?: string | null; updated_at?: string };
+        Update: {
+          display_name?: string;
+          avatar_path?: string | null;
+          avatar_source_path?: string | null;
+          avatar_crop?: Json | null;
+          avatar_revision?: number;
+          avatar_updated_at?: string | null;
+          updated_at?: string;
+        };
         Relationships: [];
       };
       houses: {
@@ -488,6 +504,17 @@ export type Database = {
           item_updated_at: string;
         };
         Returns: Database['public']['Tables']['house_budgets']['Row'][];
+      };
+      apply_profile_avatar: {
+        Args: {
+          target_profile_id: string;
+          item_avatar_path: string | null;
+          item_avatar_source_path: string | null;
+          item_avatar_crop: Json | null;
+          item_avatar_revision: number;
+          item_avatar_updated_at: string;
+        };
+        Returns: Database['public']['Tables']['profiles']['Row'][];
       };
     };
     Enums: { house_role: 'owner' | 'member'; house_member_status: 'active' | 'inactive' };

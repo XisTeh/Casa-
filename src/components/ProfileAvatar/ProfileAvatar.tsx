@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useBlobImageSource } from '../../application/use-blob-image-source';
 import type { HouseMember } from '../../domain/house';
 
 type ProfileAvatarProps = {
@@ -19,23 +19,13 @@ function getProfileInitials(name: string) {
 }
 
 export function ProfileAvatar({ profile, size = 'profile', className = '' }: ProfileAvatarProps) {
-  const imageUrl = useMemo(
-    () => (profile.avatarBlob ? URL.createObjectURL(profile.avatarBlob) : null),
-    [profile.avatarBlob],
-  );
-
-  useEffect(
-    () => () => {
-      if (imageUrl) URL.revokeObjectURL(imageUrl);
-    },
-    [imageUrl],
-  );
+  const imageRef = useBlobImageSource(profile.avatarBlob);
 
   const classes = `avatar avatar--${size} ${className}`.trim();
-  if (imageUrl) {
+  if (profile.avatarBlob) {
     return (
       <span className={classes} data-has-photo="true">
-        <img alt={`Foto de perfil de ${profile.displayName}`} src={imageUrl} />
+        <img alt={`Foto de perfil de ${profile.displayName}`} ref={imageRef} />
       </span>
     );
   }

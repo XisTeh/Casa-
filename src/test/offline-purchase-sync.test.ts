@@ -504,6 +504,26 @@ describe('OfflineFirstPurchaseRepository', () => {
     expect(backend.items.size).toBe(1);
   });
 
+  it('não classifica compra concluída da Casa atual como legacy', async () => {
+    const backend = new RemoteBackend();
+    const device = services('current-house-not-legacy', backend, USER_A, new Runtime());
+    const local = new LocalPurchaseRepository(device.database);
+    const completedAt = '2026-07-20T18:00:00.000Z';
+    await local.putPersistedSession({
+      id: 'current-session',
+      houseId: HOUSE,
+      storeNameSnapshot: 'Mercado atual',
+      status: 'completed',
+      startedAt: completedAt,
+      completedAt,
+      purchasedByNameSnapshot: 'Ronnan',
+      totalPriceCents: 1200,
+      updatedAt: completedAt,
+    });
+
+    expect(await device.repository.getLegacyMigration(HOUSE)).toBeNull();
+  });
+
   it('propaga Realtime ao acompanhante, mantém edição exclusiva e preserva a compra concluída', async () => {
     const backend = new RemoteBackend();
     const ownerRuntime = new Runtime();

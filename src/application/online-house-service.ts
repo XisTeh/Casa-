@@ -102,7 +102,7 @@ export class OnlineHouseService {
       const cached = this.cache.get(userId);
       if (cached && isOfflineOrNetworkFailure(error)) {
         await this.ensureSnapshotCategories(cached);
-        return cached;
+        return this.hydrateCachedAvatars(cached);
       }
       throw error;
     }
@@ -129,7 +129,9 @@ export class OnlineHouseService {
     const remoteMembers = await this.repository.listMembers(activeHouse.id);
     const members = await Promise.all(
       remoteMembers.map(async (member) => {
-        const avatar = await this.avatars.get(member.userId);
+        const avatar = this.avatars.reconcile
+          ? await this.avatars.reconcile(member.profile)
+          : await this.avatars.get(member.userId);
         return {
           id: member.userId,
           houseId: member.houseId,
@@ -186,8 +188,14 @@ export class OnlineHouseService {
     changes: { displayName: string; role: HouseMemberRole; avatar?: ProfileAvatarData | null },
   ) {
     if (memberId === userId) {
-      await this.repository.updateProfile(userId, validName(changes.displayName, 'seu nome'));
       if ('avatar' in changes) await this.avatars.save(userId, changes.avatar ?? null);
+      try {
+        await this.repository.updateProfile(userId, validName(changes.displayName, 'seu nome'));
+      } catch (error) {
+        if ('avatar' in changes && isOfflineOrNetworkFailure(error))
+          return this.getSnapshot(userId);
+        throw error;
+      }
     } else {
       await this.repository.updateMemberRole(houseId, memberId, changes.role);
     }
@@ -203,9 +211,52 @@ export class OnlineHouseService {
     return this.repository.createInvite(houseId);
   }
 
+  subscribeProfile(userId: string, changed: () => void) {
+    return this.avatars.subscribe?.(userId, changed) ?? (() => undefined);
+  }
+
+  hasLegacyAvatar(profile: UserProfile) {
+    return this.avatars.hasLegacyCandidate?.(profile) ?? Promise.resolve(false);
+  }
+
+  async syncLegacyAvatar(userId: string) {
+    await this.avatars.syncLegacy?.(userId);
+    return this.getSnapshot(userId);
+  }
+
+  dismissLegacyAvatar(userId: string) {
+    return this.avatars.dismissLegacy?.(userId) ?? Promise.resolve();
+  }
+
   private async ensureSnapshotCategories(snapshot: OnlineHouseholdSnapshot) {
     if (snapshot.activeHouse) {
       await this.categories?.ensureDefaultCategoriesForHouse(snapshot.activeHouse.id);
     }
+  }
+
+  private async hydrateCachedAvatars(snapshot: OnlineHouseholdSnapshot) {
+    const members = await Promise.all(
+      snapshot.members.map(async (member) => {
+        const avatar = await this.avatars.get(member.id);
+        return {
+          ...member,
+          avatarBlob: avatar?.avatarBlob,
+          avatarSourceBlob: avatar?.avatarSourceBlob,
+          avatarCrop: avatar?.avatarCrop,
+          avatarRevision: avatar?.avatarRevision,
+          avatarUpdatedAt: avatar?.avatarUpdatedAt,
+          avatarRemotePath: avatar?.avatarRemotePath,
+          avatarSourceRemotePath: avatar?.avatarSourceRemotePath,
+          avatarSyncState: avatar?.avatarSyncState,
+        };
+      }),
+    );
+    return {
+      ...snapshot,
+      members,
+      activeMember: snapshot.activeMember
+        ? members.find((member) => member.id === snapshot.activeMember?.id)
+        : undefined,
+    };
   }
 }

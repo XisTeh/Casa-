@@ -71,6 +71,10 @@ class FakeOnlineHouses implements OnlineHouseRepository {
         id: 'user-a',
         displayName: 'Raabe',
         avatarPath: null,
+        avatarSourcePath: null,
+        avatarCrop: null,
+        avatarRevision: 0,
+        avatarUpdatedAt: null,
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
       },
@@ -81,6 +85,10 @@ class FakeOnlineHouses implements OnlineHouseRepository {
         id: 'user-b',
         displayName: 'Sidney',
         avatarPath: null,
+        avatarSourcePath: null,
+        avatarCrop: null,
+        avatarRevision: 0,
+        avatarUpdatedAt: null,
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
       },
@@ -273,6 +281,10 @@ describe('OnlineHouseService', () => {
     });
     expect(snapshot.activeMember?.displayName).toBe('Raabe Silva');
     expect(await snapshot.activeMember?.avatarBlob?.text()).toBe('avatar');
+    const secondHouse = await service.createHouse('user-a', 'Casa B');
+    expect(await secondHouse.activeMember?.avatarBlob?.text()).toBe('avatar');
+    const firstHouse = await service.switchHouse('user-a', 'house-1');
+    expect(await firstHouse.activeMember?.avatarBlob?.text()).toBe('avatar');
   });
 
   it('reabre a última Casa conhecida quando a rede falha sem inventar nova membership', async () => {

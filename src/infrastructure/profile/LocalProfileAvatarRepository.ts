@@ -21,6 +21,11 @@ export class LocalProfileAvatarRepository implements ProfileAvatarRepository {
             avatarBlob: record.avatarBlob,
             avatarSourceBlob: record.avatarSourceBlob,
             avatarCrop: record.avatarCrop,
+            avatarRevision: record.avatarRevision,
+            avatarUpdatedAt: record.avatarUpdatedAt,
+            avatarRemotePath: record.avatarRemotePath,
+            avatarSourceRemotePath: record.avatarSourceRemotePath,
+            avatarSyncState: record.avatarSyncState,
           }
         : undefined;
     }
@@ -36,6 +41,11 @@ export class LocalProfileAvatarRepository implements ProfileAvatarRepository {
           avatarBlob: record.avatarBlob,
           avatarSourceBlob: record.avatarSourceBlob,
           avatarCrop: record.avatarCrop,
+          avatarRevision: record.avatarRevision,
+          avatarUpdatedAt: record.avatarUpdatedAt,
+          avatarRemotePath: record.avatarRemotePath,
+          avatarSourceRemotePath: record.avatarSourceRemotePath,
+          avatarSyncState: record.avatarSyncState,
         }
       : undefined;
   }

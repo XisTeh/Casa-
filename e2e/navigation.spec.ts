@@ -474,12 +474,24 @@ test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) 
   });
   let cropDialog = page.getByRole('dialog', { name: 'Ajustar foto' });
   await expect(cropDialog).toBeVisible();
+  await expect
+    .poll(() =>
+      cropDialog
+        .getByRole('img', { name: 'Prévia da foto para recorte' })
+        .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+    )
+    .toBe(true);
   await cropDialog.getByLabel('Zoom da foto').fill('1.4');
   await cropDialog
     .getByLabel('Área de recorte da foto. Use as setas para reposicionar.')
     .press('ArrowRight');
   await cropDialog.getByRole('button', { name: 'Usar foto' }).click();
   await expect(dialog.getByRole('img', { name: 'Foto de perfil de Raabe' })).toBeVisible();
+  expect(
+    await dialog
+      .getByRole('img', { name: 'Foto de perfil de Raabe' })
+      .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+  ).toBe(true);
   await dialog.getByLabel('Nome').fill('Raabe Foto');
   await dialog.getByRole('button', { name: 'Salvar alterações' }).click();
   await expect(page.getByRole('status')).toContainText('Perfil atualizado.');
@@ -516,6 +528,13 @@ test('adiciona, troca, remove e isola a foto local do perfil', async ({ page }) 
   await dialog.getByRole('button', { name: 'Reposicionar' }).click();
   cropDialog = page.getByRole('dialog', { name: 'Ajustar foto' });
   await expect(cropDialog.getByLabel('Zoom da foto')).toHaveValue('1.4');
+  await expect
+    .poll(() =>
+      cropDialog
+        .getByRole('img', { name: 'Prévia da foto para recorte' })
+        .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+    )
+    .toBe(true);
   await cropDialog.getByRole('button', { name: 'Cancelar' }).click();
   await dialog.getByRole('button', { name: 'Cancelar' }).click();
 

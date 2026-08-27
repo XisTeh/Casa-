@@ -311,14 +311,11 @@ export class OfflineFirstCatalogSync {
   async getLegacyMigration(houseId: string): Promise<LegacyCatalogMigration | null> {
     const key = `catalog-imported:${houseId}`;
     if (await this.getMetadata(key)) return null;
-    const target = await this.unsynced(houseId);
     const legacy =
       houseId === LEGACY_HOUSE_ID
         ? { categories: [], products: [], stores: [] }
         : await this.unsynced(LEGACY_HOUSE_ID);
-    const categories = [...target.categories, ...legacy.categories];
-    const products = [...target.products, ...legacy.products];
-    const stores = [...target.stores, ...legacy.stores];
+    const { categories, products, stores } = legacy;
     if (!categories.length && !products.length && !stores.length) {
       await this.setMetadata({ key, value: true, completedAt: this.runtime.now().toISOString() });
       return null;

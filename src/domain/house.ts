@@ -25,6 +25,11 @@ export type HouseMember = {
   avatarBlob?: Blob;
   avatarSourceBlob?: Blob;
   avatarCrop?: AvatarCrop;
+  avatarRevision?: number;
+  avatarUpdatedAt?: string;
+  avatarRemotePath?: string;
+  avatarSourceRemotePath?: string;
+  avatarSyncState?: 'local-only' | 'pending' | 'hydrating' | 'synced';
   role: HouseMemberRole;
   status: HouseMemberStatus;
   joinedAt: string;

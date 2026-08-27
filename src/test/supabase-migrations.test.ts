@@ -5,6 +5,7 @@ import shoppingSync from '../../supabase/migrations/202608260002_shopping_list_s
 import catalogSync from '../../supabase/migrations/202608260003_catalog_stores_sync.sql?raw';
 import purchaseLiveSync from '../../supabase/migrations/202608260004_purchase_live_sync.sql?raw';
 import budgetSync from '../../supabase/migrations/202608260005_budget_sync.sql?raw';
+import profileAvatarStorage from '../../supabase/migrations/202608270006_profile_avatar_storage.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -120,5 +121,26 @@ describe('migrations da fundação Supabase', () => {
       'alter publication supabase_realtime add table public.house_budgets',
     );
     expect(budgetSync).not.toMatch(/delete from public\.house_budgets/);
+  });
+
+  it('mantém avatars privados por usuário com source, crop, revisão e Realtime', () => {
+    expect(profileAvatarStorage).toContain("values ('profile-avatars', 'profile-avatars', false");
+    expect(profileAvatarStorage).toContain('allowed_mime_types = excluded.allowed_mime_types');
+    expect(profileAvatarStorage).toContain("lower(storage.extension(name)) = 'webp'");
+    expect(profileAvatarStorage).toContain(
+      '(storage.foldername(name))[1] = (select auth.uid())::text',
+    );
+    expect(profileAvatarStorage).toContain('private.shares_house_with');
+    expect(profileAvatarStorage).toContain('avatar_source_path text');
+    expect(profileAvatarStorage).toContain('avatar_crop jsonb');
+    expect(profileAvatarStorage).toContain('avatar_revision bigint');
+    expect(profileAvatarStorage).toContain('target_profile_id <> auth.uid()');
+    expect(profileAvatarStorage).toContain(
+      'revoke update (avatar_path) on public.profiles from authenticated',
+    );
+    expect(profileAvatarStorage).toContain(
+      'alter publication supabase_realtime add table public.profiles',
+    );
+    expect(profileAvatarStorage).not.toMatch(/service_role|createSignedUrl|signed_url/i);
   });
 });

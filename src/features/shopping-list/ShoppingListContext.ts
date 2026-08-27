@@ -4,6 +4,7 @@ import type {
   ShoppingListItem,
   ShoppingListItemUpdate,
   ShoppingSyncStatus,
+  LegacyShoppingMigration,
 } from '../../domain/shopping-list';
 
 export type ShoppingListContextValue = {
@@ -15,6 +16,8 @@ export type ShoppingListContextValue = {
   updateItem: (id: string, changes: ShoppingListItemUpdate) => Promise<ShoppingListItem>;
   removeItem: (id: string) => Promise<void>;
   refreshItems: () => Promise<void>;
+  legacyMigration: LegacyShoppingMigration | null;
+  importLegacyItems: () => Promise<void>;
 };
 
 export const shoppingListContext = createContext<ShoppingListContextValue | null>(null);

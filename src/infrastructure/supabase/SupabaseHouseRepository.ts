@@ -130,6 +130,10 @@ export class SupabaseHouseRepository implements OnlineHouseRepository {
     id: string;
     display_name: string;
     avatar_path: string | null;
+    avatar_source_path: string | null;
+    avatar_crop: unknown;
+    avatar_revision: number;
+    avatar_updated_at: string | null;
     created_at: string;
     updated_at: string;
   }): UserProfile {
@@ -137,9 +141,23 @@ export class SupabaseHouseRepository implements OnlineHouseRepository {
       id: row.id,
       displayName: row.display_name,
       avatarPath: row.avatar_path,
+      avatarSourcePath: row.avatar_source_path,
+      avatarCrop: this.mapAvatarCrop(row.avatar_crop),
+      avatarRevision: row.avatar_revision,
+      avatarUpdatedAt: row.avatar_updated_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  private mapAvatarCrop(value: unknown) {
+    if (!value || typeof value !== 'object') return null;
+    const crop = value as Record<string, unknown>;
+    return typeof crop.zoom === 'number' &&
+      typeof crop.centerX === 'number' &&
+      typeof crop.centerY === 'number'
+      ? { zoom: crop.zoom, centerX: crop.centerX, centerY: crop.centerY }
+      : null;
   }
 
   private mapHouse(row: {

@@ -27,6 +27,7 @@ import { JoinHouseDialog } from './JoinHouseDialog';
 import type { HouseInviteReceipt } from '../../domain/online-house';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
+import { LegacyDataRecoverySection } from './LegacyDataRecoverySection';
 import { useShoppingList } from '../shopping-list/ShoppingListContext';
 import { useProducts } from '../products/ProductContext';
 import { usePurchase } from '../purchase/PurchaseContext';
@@ -39,9 +40,12 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' });
 export function SettingsPage() {
   const household = useHousehold();
   const auth = useOptionalAuth();
-  const { syncStatus } = useShoppingList();
-  const { syncStatus: catalogSyncStatus } = useProducts();
-  const { syncStatus: purchaseSyncStatus } = usePurchase();
+  const shopping = useShoppingList();
+  const products = useProducts();
+  const purchases = usePurchase();
+  const { syncStatus } = shopping;
+  const { syncStatus: catalogSyncStatus } = products;
+  const { syncStatus: purchaseSyncStatus } = purchases;
   const { syncStatus: budgetSyncStatus } = useBudgets();
   const { houses, activeHouse, members, activeMember } = household;
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -255,6 +259,18 @@ export function SettingsPage() {
           )}
         </section>
       </div>
+      <LegacyDataRecoverySection
+        avatarAvailable={household.legacyAvatarAvailable === true}
+        catalog={products.legacyMigration}
+        houseId={activeHouse.id}
+        importAvatar={household.importLegacyAvatar}
+        importCatalog={products.importLegacyCatalog}
+        importPurchases={purchases.importLegacyPurchases}
+        importShopping={shopping.importLegacyItems}
+        profileId={activeMember.id}
+        purchases={purchases.legacyMigration}
+        shopping={shopping.legacyMigration}
+      />
       <section className="settings-card settings-app" id="aplicativo">
         <header>
           <span className="settings-card__icon">

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Category, Product } from '../domain/catalog';
 import type { CatalogEntityType } from '../domain/catalog-sync';
+import { LEGACY_HOUSE_ID } from '../domain/house';
 import type { Store } from '../domain/store';
 import { OfflineFirstCatalogSync } from '../infrastructure/catalog/OfflineFirstCatalogRepository';
 import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
@@ -355,9 +356,9 @@ describe('OfflineFirstCatalogSync', () => {
       migrateLegacy: false,
     });
     await database.initialize();
-    const legacy = category('category-old', HOUSE_A);
-    const legacyProduct = product(legacy.id, 'product-old', HOUSE_A);
-    const legacyStore = store('store-old', HOUSE_A);
+    const legacy = category('category-old', LEGACY_HOUSE_ID);
+    const legacyProduct = product(legacy.id, 'product-old', LEGACY_HOUSE_ID);
+    const legacyStore = store('store-old', LEGACY_HOUSE_ID);
     database.getMemoryDatabase().categories.set(legacy.id, legacy);
     database.getMemoryDatabase().products.set(legacyProduct.id, legacyProduct);
     database.getMemoryDatabase().stores.set(legacyStore.id, legacyStore);
@@ -368,16 +369,39 @@ describe('OfflineFirstCatalogSync', () => {
     expect(migration?.stores).toBeGreaterThanOrEqual(1);
     expect(remote.applyCalls).toBe(0);
     await migration!.importIntoHouse();
-    const restored = await sync.categories.get(HOUSE_A, 'category-old');
-    expect(restored?.id).toBe('category-old');
+    const restored = (await sync.categories.list(HOUSE_A)).find(
+      (item) => item.name === legacy.name,
+    );
+    expect(restored?.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(restored?.syncId).toMatch(/^[0-9a-f-]{36}$/);
-    expect((await sync.products.get(HOUSE_A, 'product-old'))?.id).toBe('product-old');
-    expect((await sync.stores.list(HOUSE_A))[0]?.id).toBe('store-old');
+    expect(
+      (await sync.products.list(HOUSE_A)).some((item) => item.name === legacyProduct.name),
+    ).toBe(true);
+    expect((await sync.stores.list(HOUSE_A)).some((item) => item.name === legacyStore.name)).toBe(
+      true,
+    );
     const appliedOnce = remote.applyCalls;
     await migration!.importIntoHouse();
     expect(remote.applyCalls).toBe(appliedOnce);
     const snapshot = await remote.list(HOUSE_A);
     expect(snapshot.products[0]?.categoryId).toBe(snapshot.categories[0]?.id);
+    expect(await sync.getLegacyMigration(HOUSE_A)).toBeNull();
+  });
+
+  it('não classifica dados locais da Casa atual como legacy', async () => {
+    const runtime = new Runtime();
+    const database = new CasaeLocalDatabase(`catalog-current-house-${Math.random()}`, {
+      migrateLegacy: false,
+    });
+    await database.initialize();
+    database.getMemoryDatabase().categories.clear();
+    database.getMemoryDatabase().products.clear();
+    database.getMemoryDatabase().stores.clear();
+    const current = category('current-category', HOUSE_A);
+    database.getMemoryDatabase().categories.set(current.id, current);
+
+    const sync = new OfflineFirstCatalogSync(database, new Remote(), runtime);
+
     expect(await sync.getLegacyMigration(HOUSE_A)).toBeNull();
   });
 });

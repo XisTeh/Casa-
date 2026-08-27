@@ -12,7 +12,6 @@ import { productContext } from './ProductContext';
 import { useHousehold } from '../house/HouseContext';
 import type { LegacyCatalogMigration } from '../../domain/catalog-sync';
 import type { ShoppingSyncStatus } from '../../domain/shopping-list';
-import { LegacyCatalogMigrationDialog } from './LegacyCatalogMigrationDialog';
 
 type ProductProviderProps = {
   children: ReactNode;
@@ -43,7 +42,6 @@ export function ProductProvider({
     houseId: string;
     migration: LegacyCatalogMigration;
   } | null>(null);
-  const [migrationDismissedForHouse, setMigrationDismissedForHouse] = useState<string | null>(null);
 
   const refreshProducts = useCallback(async () => {
     const [savedProducts, savedCategories] = await Promise.all([
@@ -158,6 +156,13 @@ export function ProductProvider({
     },
     [activeHouse.id, categoryService, refreshProducts],
   );
+  const legacyMigration = legacyPrompt?.houseId === activeHouse.id ? legacyPrompt.migration : null;
+  const importLegacyCatalog = useCallback(async () => {
+    if (!legacyMigration) return;
+    await legacyMigration.importIntoHouse();
+    setLegacyPrompt(null);
+    await refreshProducts();
+  }, [legacyMigration, refreshProducts]);
 
   const value = useMemo(
     () => ({
@@ -175,6 +180,8 @@ export function ProductProvider({
       renameCategory,
       setCategoryActive,
       refreshProducts,
+      legacyMigration,
+      importLegacyCatalog,
     }),
     [
       addToList,
@@ -182,9 +189,11 @@ export function ProductProvider({
       createCategory,
       createProduct,
       error,
+      importLegacyCatalog,
       syncStatus,
       isLoading,
       products,
+      legacyMigration,
       refreshProducts,
       renameCategory,
       setActive,
@@ -194,22 +203,5 @@ export function ProductProvider({
     ],
   );
 
-  return (
-    <productContext.Provider value={value}>
-      {children}
-      {legacyPrompt?.houseId === activeHouse.id &&
-        migrationDismissedForHouse !== activeHouse.id && (
-          <LegacyCatalogMigrationDialog
-            migration={legacyPrompt.migration}
-            houseName={activeHouse.name}
-            onClose={() => setMigrationDismissedForHouse(activeHouse.id)}
-            onImport={async () => {
-              await legacyPrompt.migration.importIntoHouse();
-              setLegacyPrompt(null);
-              await refreshProducts();
-            }}
-          />
-        )}
-    </productContext.Provider>
-  );
+  return <productContext.Provider value={value}>{children}</productContext.Provider>;
 }

@@ -117,6 +117,24 @@ beforeEach(() => {
 });
 
 describe('sincronização offline-first da Lista', () => {
+  it('não classifica uma outbox offline atual como dados legacy', async () => {
+    vi.stubGlobal('indexedDB', undefined);
+    const runtime = new TestRuntime();
+    const remote = new FakeRemoteShoppingStore();
+    const database = new CasaeLocalDatabase(databaseName('pending-is-not-legacy'), {
+      migrateLegacy: false,
+    });
+    await database.initialize();
+    database.getMemoryDatabase().shoppingItems.clear();
+    const repository = new OfflineFirstShoppingRepository(database, remote, USER_A, runtime);
+    const service = new ShoppingListService(repository);
+
+    await service.create(input('Item offline atual'), actor());
+
+    expect(await repository.getStatus(HOUSE_A)).toMatchObject({ state: 'offline', pending: 1 });
+    expect(await repository.getLegacyMigration(HOUSE_A)).toBeNull();
+  });
+
   it('persiste e compacta create/update/delete offline, retoma no reload e envia tombstone uma vez', async () => {
     const runtime = new TestRuntime();
     const remote = new FakeRemoteShoppingStore();

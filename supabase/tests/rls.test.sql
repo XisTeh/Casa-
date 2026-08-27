@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(39);
+select plan(42);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -37,6 +37,9 @@ select lives_ok($$insert into public.shopping_items (id, house_id, name, normali
 select throws_ok($$insert into public.shopping_items (id, house_id, name, normalized_name, quantity, unit, category_key, added_by_name, created_by, updated_by, created_at, updated_at) values ('bb000000-0000-4000-8000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'Café', 'cafe', 1, 'pacote', 'mercearia', 'Usuário A', auth.uid(), auth.uid(), now(), now())$$, '42501', null, 'A não insere item na Casa B');
 select lives_ok($$insert into public.house_budgets (id, house_id, year, month, amount_cents, created_by, updated_by, created_at, updated_at) values ('aa000000-0000-4000-8000-000000000010', 'a0000000-0000-0000-0000-000000000001', 2026, 8, 150000, auth.uid(), auth.uid(), now(), now())$$, 'A define orçamento da Casa A');
 select throws_ok($$insert into public.house_budgets (id, house_id, year, month, amount_cents, created_by, updated_by, created_at, updated_at) values ('bb000000-0000-4000-8000-000000000010', 'b0000000-0000-0000-0000-000000000002', 2026, 8, 150000, auth.uid(), auth.uid(), now(), now())$$, '42501', null, 'A não define orçamento da Casa B');
+select lives_ok($$select public.apply_profile_avatar(auth.uid(), auth.uid()::text || '/1/avatar.webp', auth.uid()::text || '/1/source.webp', '{"zoom":1.2,"centerX":0.4,"centerY":0.6}'::jsonb, 1, now())$$, 'A atualiza o próprio avatar');
+select is((select avatar_revision from public.profiles where id = auth.uid()), 1::bigint, 'A persiste revisão do próprio avatar');
+select throws_ok($$select public.apply_profile_avatar('20000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002/1/avatar.webp', '20000000-0000-0000-0000-000000000002/1/source.webp', '{"zoom":1,"centerX":0.5,"centerY":0.5}'::jsonb, 1, now())$$, 'P0001', 'profile_avatar_owner_required', 'A não altera o avatar de B');
 
 insert into public.categories (id, house_id, name, normalized_name, created_by, updated_by, created_at, updated_at)
 values ('aa100000-0000-4000-8000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Categoria A', 'categoria a', auth.uid(), auth.uid(), now(), now());

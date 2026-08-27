@@ -19,7 +19,7 @@ export function EditProfileDialog({
 }: {
   member: HouseMember;
   onClose: () => void;
-  onSave: (name: string, avatar: ProfileAvatarData | null) => Promise<void>;
+  onSave: (name: string, avatar: ProfileAvatarData | null | undefined) => Promise<void>;
 }) {
   const [name, setName] = useState(member.displayName);
   const [avatar, setAvatar] = useState<ProfileAvatarData | null>(() =>
@@ -28,10 +28,16 @@ export function EditProfileDialog({
           avatarBlob: member.avatarBlob,
           avatarSourceBlob: member.avatarSourceBlob,
           avatarCrop: member.avatarCrop,
+          avatarRevision: member.avatarRevision,
+          avatarUpdatedAt: member.avatarUpdatedAt,
+          avatarRemotePath: member.avatarRemotePath,
+          avatarSourceRemotePath: member.avatarSourceRemotePath,
+          avatarSyncState: member.avatarSyncState,
         }
       : null,
   );
   const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
+  const [avatarChanged, setAvatarChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,6 +49,21 @@ export function EditProfileDialog({
   useEffect(() => {
     cropOpenRef.current = Boolean(cropDraft);
   }, [cropDraft]);
+
+  const currentAvatar = avatarChanged
+    ? avatar
+    : member.avatarBlob
+      ? {
+          avatarBlob: member.avatarBlob,
+          avatarSourceBlob: member.avatarSourceBlob,
+          avatarCrop: member.avatarCrop,
+          avatarRevision: member.avatarRevision,
+          avatarUpdatedAt: member.avatarUpdatedAt,
+          avatarRemotePath: member.avatarRemotePath,
+          avatarSourceRemotePath: member.avatarSourceRemotePath,
+          avatarSyncState: member.avatarSyncState,
+        }
+      : null;
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -76,12 +97,23 @@ export function EditProfileDialog({
   }
 
   function repositionPhoto() {
-    if (!avatar) return;
+    if (!currentAvatar) return;
     setError(null);
+    const sourceBlob =
+      currentAvatar.avatarSourceBlob ??
+      (!currentAvatar.avatarSyncState || currentAvatar.avatarSyncState === 'local-only'
+        ? currentAvatar.avatarBlob
+        : undefined);
+    if (!sourceBlob) {
+      setError('Não foi possível carregar a foto para edição. Tente novamente.');
+      return;
+    }
     setCropDraft({
-      sourceBlob: avatar.avatarSourceBlob ?? avatar.avatarBlob,
+      sourceBlob,
       initialCrop:
-        avatar.avatarSourceBlob && avatar.avatarCrop ? avatar.avatarCrop : DEFAULT_AVATAR_CROP,
+        currentAvatar.avatarSourceBlob && currentAvatar.avatarCrop
+          ? currentAvatar.avatarCrop
+          : DEFAULT_AVATAR_CROP,
     });
   }
 
@@ -95,7 +127,7 @@ export function EditProfileDialog({
     setSaving(true);
     setError(null);
     try {
-      await onSave(name, avatar);
+      await onSave(name, avatarChanged ? avatar : undefined);
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível salvar.');
@@ -132,7 +164,7 @@ export function EditProfileDialog({
             <ProfileAvatar
               profile={{
                 displayName: name || member.displayName,
-                avatarBlob: avatar?.avatarBlob,
+                avatarBlob: currentAvatar?.avatarBlob,
               }}
               size="profile"
             />
@@ -156,17 +188,27 @@ export function EditProfileDialog({
                   variant="secondary"
                 >
                   <ImagePlus aria-hidden="true" size={17} />
-                  {processing ? 'Preparando foto…' : avatar ? 'Trocar foto' : 'Escolher foto'}
+                  {processing
+                    ? 'Preparando foto…'
+                    : currentAvatar
+                      ? 'Trocar foto'
+                      : 'Escolher foto'}
                 </Button>
-                {avatar && (
+                {currentAvatar && (
                   <>
-                    <Button onClick={repositionPhoto} type="button" variant="secondary">
+                    <Button
+                      disabled={currentAvatar.avatarSyncState === 'hydrating'}
+                      onClick={repositionPhoto}
+                      type="button"
+                      variant="secondary"
+                    >
                       <Crop aria-hidden="true" size={17} /> Reposicionar
                     </Button>
                     <Button
                       aria-label="Remover foto de perfil"
                       onClick={() => {
                         setAvatar(null);
+                        setAvatarChanged(true);
                         setError(null);
                       }}
                       type="button"
@@ -177,6 +219,12 @@ export function EditProfileDialog({
                   </>
                 )}
               </div>
+              {member.avatarSyncState === 'pending' && (
+                <small role="status">Será sincronizada quando houver internet.</small>
+              )}
+              {member.avatarSyncState === 'hydrating' && (
+                <small role="status">Carregando foto para edição…</small>
+              )}
             </div>
           </div>
           <label className="settings-field">
@@ -209,6 +257,7 @@ export function EditProfileDialog({
           onCancel={() => setCropDraft(null)}
           onUse={(nextAvatar) => {
             setAvatar(nextAvatar);
+            setAvatarChanged(true);
             setCropDraft(null);
           }}
           sourceBlob={cropDraft.sourceBlob}

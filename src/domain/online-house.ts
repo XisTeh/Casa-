@@ -4,6 +4,10 @@ export type UserProfile = {
   id: string;
   displayName: string;
   avatarPath: string | null;
+  avatarSourcePath: string | null;
+  avatarCrop: { zoom: number; centerX: number; centerY: number } | null;
+  avatarRevision: number;
+  avatarUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

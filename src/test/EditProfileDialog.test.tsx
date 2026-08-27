@@ -45,6 +45,11 @@ const member = (avatar?: ProfileAvatarData): HouseMember => ({
   avatarBlob: avatar?.avatarBlob,
   avatarSourceBlob: avatar?.avatarSourceBlob,
   avatarCrop: avatar?.avatarCrop,
+  avatarRevision: avatar?.avatarRevision,
+  avatarUpdatedAt: avatar?.avatarUpdatedAt,
+  avatarRemotePath: avatar?.avatarRemotePath,
+  avatarSourceRemotePath: avatar?.avatarSourceRemotePath,
+  avatarSyncState: avatar?.avatarSyncState,
   role: 'owner',
   status: 'active',
   joinedAt: '2026-01-01T00:00:00.000Z',
@@ -140,5 +145,55 @@ describe('EditProfileDialog', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Escolha uma imagem JPG, PNG ou WebP.'),
     );
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('não reenvia a foto quando apenas o nome muda', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EditProfileDialog
+        member={member({ avatarBlob: new Blob(['existente'], { type: 'image/webp' }) })}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText('Nome'));
+    await user.type(screen.getByLabelText('Nome'), 'Novo nome');
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    expect(onSave).toHaveBeenCalledWith('Novo nome', undefined);
+  });
+
+  it('não abre o reposicionamento sem source e o libera quando a hidratação termina', async () => {
+    const user = userEvent.setup();
+    const avatarBlob = new Blob(['avatar'], { type: 'image/webp' });
+    const base = {
+      avatarBlob,
+      avatarCrop: { zoom: 1.3, centerX: 0.4, centerY: 0.6 },
+      avatarRevision: 10,
+      avatarUpdatedAt: '2026-08-27T12:00:00.000Z',
+      avatarRemotePath: 'profile-a/version/avatar.webp',
+      avatarSourceRemotePath: 'profile-a/version/source.webp',
+      avatarSyncState: 'hydrating' as const,
+    };
+    const props = { onClose: vi.fn(), onSave: vi.fn().mockResolvedValue(undefined) };
+    const { rerender } = render(<EditProfileDialog member={member(base)} {...props} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando foto para edição');
+    expect(screen.getByRole('button', { name: 'Reposicionar' })).toBeDisabled();
+
+    rerender(
+      <EditProfileDialog
+        member={member({
+          ...base,
+          avatarSourceBlob: new Blob(['source'], { type: 'image/webp' }),
+          avatarSyncState: 'synced',
+        })}
+        {...props}
+      />,
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reposicionar' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Reposicionar' }));
+    expect(screen.getByRole('dialog', { name: 'Ajustar foto' })).toBeVisible();
   });
 });

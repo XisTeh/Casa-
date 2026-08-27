@@ -9,6 +9,7 @@ import type { AvatarCrop } from '../../domain/profile-avatar';
 import type { CatalogSyncOutboxEntry } from '../../domain/catalog-sync';
 import type { PurchaseSyncOutboxEntry } from '../../domain/purchase-sync';
 import type { BudgetSyncOutboxEntry } from '../../domain/budget-sync';
+import type { ProfileAvatarSyncOutboxEntry } from '../../domain/profile-avatar-sync';
 import {
   HOUSE_ID,
   initialShoppingListSeed,
@@ -70,6 +71,11 @@ export type LocalProfileAvatar = {
   avatarBlob: Blob;
   avatarSourceBlob?: Blob;
   avatarCrop?: AvatarCrop;
+  avatarRevision?: number;
+  avatarUpdatedAt?: string;
+  avatarRemotePath?: string;
+  avatarSourceRemotePath?: string;
+  avatarSyncState?: 'local-only' | 'pending' | 'hydrating' | 'synced';
   updatedAt: string;
 };
 
@@ -91,6 +97,7 @@ export type CasaeMemoryDatabase = {
     | CatalogSyncOutboxEntry
     | PurchaseSyncOutboxEntry
     | BudgetSyncOutboxEntry
+    | ProfileAvatarSyncOutboxEntry
   >;
 };
 

@@ -21,6 +21,10 @@ const profile = {
   id: '10000000-0000-0000-0000-000000000001',
   display_name: 'Raabe Online',
   avatar_path: null,
+  avatar_source_path: null,
+  avatar_crop: null,
+  avatar_revision: 0,
+  avatar_updated_at: null,
   created_at: '2026-08-26T10:00:00.000Z',
   updated_at: '2026-08-26T10:00:00.000Z',
 };
@@ -105,15 +109,10 @@ async function mockSupabase(page: Page, hasHouse: boolean) {
   });
 }
 
-async function dismissLegacyMigration(page: Page) {
-  const dialog = page.getByRole('dialog', { name: 'Adicionar itens locais?' });
-  try {
-    await dialog.waitFor({ state: 'visible', timeout: 2_000 });
-    await dialog.getByRole('button', { name: 'Agora não' }).click();
-    await dialog.waitFor({ state: 'hidden' });
-  } catch {
-    // Dispositivos sem dados locais não exibem a decisão de migração.
-  }
+async function expectNoAutomaticLegacyDialogs(page: Page) {
+  await expect(page.getByRole('dialog', { name: 'Adicionar itens locais?' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Adicionar dados locais?' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Adicionar compras anteriores?' })).toHaveCount(0);
 }
 
 test('login, cadastro e recuperação permanecem responsivos', async ({ page }) => {
@@ -155,11 +154,15 @@ test('Lista, Configurações, membros, Casas e convite usam a identidade remota'
   test.setTimeout(90_000);
   await installSession(page);
   await mockSupabase(page, true);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Olá, Raabe Online/ })).toBeVisible();
+  await expectNoAutomaticLegacyDialogs(page);
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/configuracoes');
     await expect(page.getByRole('heading', { name: 'Casa Online' })).toBeVisible();
-    await dismissLegacyMigration(page);
+    await expectNoAutomaticLegacyDialogs(page);
+    await expect(page.getByRole('heading', { name: 'Dados locais antigos' })).toBeVisible();
     await expect(page.getByText('raabe@casae.test')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Raabe Online', level: 2 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
@@ -167,7 +170,7 @@ test('Lista, Configurações, membros, Casas e convite usam a identidade remota'
     );
     await page.goto('/lista');
     await expect(page.getByRole('heading', { name: 'Lista de compras' })).toBeVisible();
-    await dismissLegacyMigration(page);
+    await expectNoAutomaticLegacyDialogs(page);
     await page.getByRole('button', { name: 'Adicionar produto' }).first().click();
     const itemDialog = page.getByRole('dialog', { name: 'Adicionar produto' });
     const categorySelect = itemDialog.getByRole('combobox', { name: /Categoria/ });
@@ -181,7 +184,7 @@ test('Lista, Configurações, membros, Casas e convite usam a identidade remota'
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto('/configuracoes');
   await expect(page.getByRole('heading', { name: 'Casa Online' })).toBeVisible();
-  await dismissLegacyMigration(page);
+  await expectNoAutomaticLegacyDialogs(page);
   await page.getByRole('button', { name: 'Convidar membro' }).click();
   const dialog = page.getByRole('dialog', { name: /Convidar para Casa Online/ });
   await expect(dialog.getByText('A1B2-C3D4-E5F6-A7B8-C9D0-E1F2')).toBeVisible();

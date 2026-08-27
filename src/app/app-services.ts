@@ -17,7 +17,8 @@ import { AuthService } from '../application/auth-service';
 import { OnlineHouseService } from '../application/online-house-service';
 import { SupabaseAuthRepository } from '../infrastructure/supabase/SupabaseAuthRepository';
 import { SupabaseHouseRepository } from '../infrastructure/supabase/SupabaseHouseRepository';
-import { LocalProfileAvatarRepository } from '../infrastructure/profile/LocalProfileAvatarRepository';
+import { OfflineFirstProfileAvatarRepository } from '../infrastructure/profile/OfflineFirstProfileAvatarRepository';
+import { SupabaseProfileAvatarRepository } from '../infrastructure/supabase/SupabaseProfileAvatarRepository';
 import { OfflineFirstShoppingRepository } from '../infrastructure/shopping/OfflineFirstShoppingRepository';
 import { SupabaseShoppingRepository } from '../infrastructure/supabase/SupabaseShoppingRepository';
 import { SupabaseCatalogRepository } from '../infrastructure/supabase/SupabaseCatalogRepository';
@@ -63,7 +64,10 @@ export const createDefaultAuthService = () => new AuthService(new SupabaseAuthRe
 export const createDefaultOnlineHouseService = () =>
   new OnlineHouseService(
     new SupabaseHouseRepository(),
-    new LocalProfileAvatarRepository(defaultLocalDatabase),
+    new OfflineFirstProfileAvatarRepository(
+      defaultLocalDatabase,
+      new SupabaseProfileAvatarRepository(),
+    ),
     undefined,
     undefined,
     defaultCategoryService,

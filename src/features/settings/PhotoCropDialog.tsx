@@ -1,12 +1,12 @@
 import { Move, X, ZoomIn } from 'lucide-react';
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { useBlobImageSource } from '../../application/use-blob-image-source';
 import {
   constrainAvatarCrop,
   createProfileAvatar,
@@ -37,9 +37,7 @@ export function PhotoCropDialog({
   const [error, setError] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
-  const imageUrl = useMemo(() => URL.createObjectURL(sourceBlob), [sourceBlob]);
-
-  useEffect(() => () => URL.revokeObjectURL(imageUrl), [imageUrl]);
+  const imageRef = useBlobImageSource(sourceBlob);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -160,6 +158,9 @@ export function PhotoCropDialog({
           <img
             alt="Prévia da foto para recorte"
             draggable={false}
+            onError={() =>
+              setError('Não foi possível carregar a foto para edição. Tente novamente.')
+            }
             onLoad={(event) => {
               const next = {
                 width: event.currentTarget.naturalWidth,
@@ -168,7 +169,7 @@ export function PhotoCropDialog({
               setImageSize(next);
               setCrop((current) => constrainAvatarCrop(current, next));
             }}
-            src={imageUrl}
+            ref={imageRef}
             style={
               geometry
                 ? {

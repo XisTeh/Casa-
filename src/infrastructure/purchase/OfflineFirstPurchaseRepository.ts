@@ -235,16 +235,13 @@ export class OfflineFirstPurchaseRepository implements PurchaseRepository, Purch
   async getLegacyMigration(houseId: string): Promise<LegacyPurchaseMigration | null> {
     const key = `purchase-history-imported:${houseId}`;
     if (await this.getMetadata(key)) return null;
-    const target = await this.unsyncedCompleted(houseId);
     const legacy =
       houseId === LEGACY_HOUSE_ID
         ? { sessions: [], items: [] }
         : await this.unsyncedCompleted(LEGACY_HOUSE_ID);
-    const sessions = [...target.sessions, ...legacy.sessions];
+    const sessions = legacy.sessions;
     const sessionIds = new Set(sessions.map((session) => session.id));
-    const items = [...target.items, ...legacy.items].filter((item) =>
-      sessionIds.has(item.purchaseSessionId),
-    );
+    const items = legacy.items.filter((item) => sessionIds.has(item.purchaseSessionId));
     if (!sessions.length) {
       await this.setMetadata({ key, value: true, completedAt: this.runtime.now().toISOString() });
       return null;
