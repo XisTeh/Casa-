@@ -13,6 +13,8 @@ import { useStores } from '../stores/StoreContext';
 import { useProducts } from '../products/ProductContext';
 import { purchaseContext } from './PurchaseContext';
 import { useHousehold } from '../house/HouseContext';
+import type { LegacyPurchaseMigration } from '../../domain/purchase-sync';
+import { LegacyPurchaseMigrationDialog } from './LegacyPurchaseMigrationDialog';
 
 type PurchaseProviderProps = { children: ReactNode; service?: PurchaseService };
 
@@ -39,6 +41,7 @@ export function PurchaseProvider({
   const [syncStatus, setSyncStatus] = useState<ShoppingSyncStatus>({ state: 'local', pending: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [legacyMigration, setLegacyMigration] = useState<LegacyPurchaseMigration | null>(null);
 
   const refreshPurchases = useCallback(async () => {
     const [sessions, completed] = await Promise.all([
@@ -71,6 +74,8 @@ export function PurchaseProvider({
     void service
       .syncNow(activeHouse.id)
       .then(refreshPurchases)
+      .then(() => service.getLegacyMigration(activeHouse.id))
+      .then((migration) => current && setLegacyMigration(migration))
       .catch(() => current && setError('Não foi possível abrir as compras locais.'))
       .finally(() => current && setIsLoading(false));
     return () => {
@@ -218,5 +223,21 @@ export function PurchaseProvider({
     ],
   );
 
-  return <purchaseContext.Provider value={value}>{children}</purchaseContext.Provider>;
+  return (
+    <purchaseContext.Provider value={value}>
+      {children}
+      {legacyMigration && (
+        <LegacyPurchaseMigrationDialog
+          houseName={activeHouse.name}
+          migration={legacyMigration}
+          onClose={() => setLegacyMigration(null)}
+          onImport={async () => {
+            await legacyMigration.importIntoHouse();
+            await refreshPurchases();
+            setLegacyMigration(null);
+          }}
+        />
+      )}
+    </purchaseContext.Provider>
+  );
 }

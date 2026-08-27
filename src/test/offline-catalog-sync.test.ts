@@ -15,6 +15,7 @@ const clone = <T>(value: T): T => structuredClone(value);
 const HOUSE_A = '00000000-0000-4000-8000-000000000001';
 const HOUSE_B = '00000000-0000-4000-8000-000000000002';
 const USER = '00000000-0000-4000-8000-000000000010';
+const USER_B = '00000000-0000-4000-8000-000000000020';
 const stamp = '2026-08-26T12:00:00.000Z';
 
 class Runtime implements ShoppingSyncRuntime {
@@ -49,8 +50,9 @@ class Remote implements RemoteCatalogStore {
   failures = 0;
   subscribeCalls = 0;
   unsubscribeCalls = 0;
+  currentUserId = USER;
   async getCurrentUserId() {
-    return USER;
+    return this.currentUserId;
   }
   async list(houseId: string): Promise<RemoteCatalogSnapshot> {
     const values = [...this.records.values()].filter(({ entity }) => entity.houseId === houseId);
@@ -305,6 +307,45 @@ describe('OfflineFirstCatalogSync', () => {
     expect((await sync.getStatus(HOUSE_B)).pending).toBe(1);
     await sync.syncNow(HOUSE_B);
     expect((await remote.list(HOUSE_B)).categories).toHaveLength(1);
+  });
+
+  it('não deixa catálogo pendente de outra conta bloquear o snapshot remoto', async () => {
+    const runtime = new Runtime();
+    runtime.online = false;
+    const remote = new Remote();
+    const database = new CasaeLocalDatabase(`catalog-shared-account-${Math.random()}`, {
+      migrateLegacy: false,
+    });
+    const accountA = new OfflineFirstCatalogSync(database, remote, runtime, USER);
+    const pending = await accountA.categories.save({
+      ...category('00000000-0000-4000-8000-000000000099'),
+      name: 'Categoria local',
+      normalizedName: 'categoria local',
+      legacyKey: undefined,
+    });
+    const remoteVersion: Category = {
+      ...pending,
+      id: pending.syncId ?? pending.id,
+      syncId: pending.syncId ?? pending.id,
+      name: 'Categoria remota',
+      normalizedName: 'categoria remota',
+      updatedAt: '2026-08-26T11:59:59.000Z',
+    };
+    remote.records.set(`category:${remoteVersion.id}`, {
+      type: 'category',
+      entity: remoteVersion,
+    });
+
+    remote.currentUserId = USER_B;
+    runtime.online = true;
+    const accountB = new OfflineFirstCatalogSync(database, remote, runtime, USER_B);
+    await accountB.syncNow(HOUSE_A);
+
+    expect(await accountB.categories.list(HOUSE_A)).toEqual([
+      expect.objectContaining({ name: 'Categoria remota' }),
+    ]);
+    expect(await accountB.getStatus(HOUSE_A)).toMatchObject({ state: 'synced', pending: 0 });
+    expect(await accountA.getStatus(HOUSE_A)).toMatchObject({ pending: 1 });
   });
 
   it('preserva IDs legados, não envia antes da confirmação e torna a importação idempotente', async () => {

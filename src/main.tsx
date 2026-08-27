@@ -9,6 +9,12 @@ import './styles/global.css';
 import './styles/spending.css';
 import './styles/products.css';
 
+if (import.meta.env.DEV) {
+  void import('./infrastructure/purchase/purchaseDiagnostics').then(
+    ({ installPurchaseDiagnostics }) => installPurchaseDiagnostics(),
+  );
+}
+
 pwaInstallManager.start();
 startPwaUpdateController({
   register: registerSW,

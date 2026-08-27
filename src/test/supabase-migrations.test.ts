@@ -4,6 +4,7 @@ import onlineIdentity from '../../supabase/migrations/202608260001_online_identi
 import shoppingSync from '../../supabase/migrations/202608260002_shopping_list_sync.sql?raw';
 import catalogSync from '../../supabase/migrations/202608260003_catalog_stores_sync.sql?raw';
 import purchaseLiveSync from '../../supabase/migrations/202608260004_purchase_live_sync.sql?raw';
+import budgetSync from '../../supabase/migrations/202608260005_budget_sync.sql?raw';
 
 describe('migrations da fundação Supabase', () => {
   it('mantém unicidade de membership e cria convite sem persistir token aberto', () => {
@@ -105,5 +106,19 @@ describe('migrations da fundação Supabase', () => {
     expect(purchaseLiveSync).toContain('excluded.updated_at > public.purchase_sessions.updated_at');
     expect(purchaseLiveSync).toContain('excluded.updated_at > public.purchase_items.updated_at');
     expect(purchaseLiveSync).not.toMatch(/delete from public\.purchase_(sessions|items)/);
+  });
+
+  it('sincroniza um único orçamento mensal por Casa com RLS e Realtime', () => {
+    expect(budgetSync).toContain('create table public.house_budgets');
+    expect(budgetSync).toContain('unique (house_id, year, month)');
+    expect(budgetSync).toContain('amount_cents bigint not null');
+    expect(budgetSync).toContain('alter table public.house_budgets enable row level security');
+    expect(budgetSync).toContain('private.is_house_member(house_id)');
+    expect(budgetSync).toContain('on conflict (house_id, year, month) do update');
+    expect(budgetSync).toContain('excluded.updated_at > public.house_budgets.updated_at');
+    expect(budgetSync).toContain(
+      'alter publication supabase_realtime add table public.house_budgets',
+    );
+    expect(budgetSync).not.toMatch(/delete from public\.house_budgets/);
   });
 });

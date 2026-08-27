@@ -309,6 +309,32 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['purchase_items']['Row']>;
         Relationships: [];
       };
+      house_budgets: {
+        Row: {
+          id: string;
+          house_id: string;
+          year: number;
+          month: number;
+          amount_cents: number;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          house_id: string;
+          year: number;
+          month: number;
+          amount_cents: number;
+          created_by: string;
+          updated_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Update: Partial<Database['public']['Tables']['house_budgets']['Row']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -450,6 +476,18 @@ export type Database = {
           item_deleted_at: string | null;
         };
         Returns: Database['public']['Tables']['purchase_items']['Row'][];
+      };
+      apply_house_budget: {
+        Args: {
+          item_id: string;
+          target_house_id: string;
+          item_year: number;
+          item_month: number;
+          item_amount_cents: number;
+          item_created_at: string;
+          item_updated_at: string;
+        };
+        Returns: Database['public']['Tables']['house_budgets']['Row'][];
       };
     };
     Enums: { house_role: 'owner' | 'member'; house_member_status: 'active' | 'inactive' };

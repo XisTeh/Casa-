@@ -9,6 +9,7 @@ import {
   type SpendingBreakdown,
   type SpendingComparison,
 } from './spending-selectors';
+import { getCasaeDateParts, getCasaeDayKey } from './casae-date';
 
 export type ProductMonthlyMetric = {
   key: string;
@@ -100,17 +101,19 @@ function aggregateProducts(sessions: PurchaseSession[]) {
 }
 
 function periodContains(date: Date, period: MonthPeriod) {
-  return date.getFullYear() === period.year && date.getMonth() + 1 === period.month;
+  const parts = getCasaeDateParts(date);
+  return parts.year === period.year && parts.month === period.month;
 }
 
 function getPriceChanges(sessions: PurchaseSession[], period: MonthPeriod) {
-  const periodEnd = new Date(period.year, period.month, 1).getTime();
+  const periodEnd = period.year * 12 + period.month;
   const groups = new Map<string, Array<{ item: PurchaseItem; time: number; day: string }>>();
 
   sessions
-    .filter(
-      (session) => session.status === 'completed' && sessionDate(session).getTime() < periodEnd,
-    )
+    .filter((session) => {
+      const date = getCasaeDateParts(sessionDate(session));
+      return session.status === 'completed' && date.year * 12 + date.month <= periodEnd;
+    })
     .forEach((session) => {
       session.items.forEach((item) => {
         const identity = itemIdentity(item);
@@ -119,7 +122,7 @@ function getPriceChanges(sessions: PurchaseSession[], period: MonthPeriod) {
         if (!Number.isFinite(time)) return;
         const key = `${identity}:unit:${item.unitSnapshot}`;
         const values = groups.get(key) ?? [];
-        values.push({ item, time, day: new Date(time).toISOString().slice(0, 10) });
+        values.push({ item, time, day: getCasaeDayKey(new Date(time)) });
         groups.set(key, values);
       });
     });

@@ -21,8 +21,10 @@ export type ManualPurchaseItemInput = {
 
 export type PurchaseItem = {
   id: string;
-  /** UUID remoto; IDs locais legados continuam estáveis. */
+  /** UUID remoto e identidade canônica quando o registro está sincronizado. */
   syncId?: string;
+  /** Identificador local anterior, mantido apenas como referência após a canonização remota. */
+  legacyId?: string;
   houseId: string;
   purchaseSessionId: string;
   origin?: PurchaseItemOrigin;
@@ -51,8 +53,10 @@ export type PurchaseItem = {
 
 export type PurchaseSession = {
   id: string;
-  /** UUID remoto; IDs locais legados continuam estáveis. */
+  /** UUID remoto e identidade canônica quando o registro está sincronizado. */
   syncId?: string;
+  /** Identificador local anterior, mantido apenas como referência após a canonização remota. */
+  legacyId?: string;
   houseId: string;
   storeId?: string;
   storeNameSnapshot: string;

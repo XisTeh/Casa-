@@ -328,4 +328,39 @@ describe('CasaeLocalDatabase', () => {
     ).toHaveLength(1);
     expect(await new LocalBudgetRepository(database).list(HOUSE_ID)).toHaveLength(1);
   });
+
+  it('substitui atomicamente o snapshot de compras de uma Casa no IndexedDB real', async () => {
+    vi.stubGlobal('indexedDB', fakeIndexedDB);
+    vi.stubGlobal('IDBKeyRange', FakeIDBKeyRange);
+    const database = new CasaeLocalDatabase(databaseName('purchase-snapshot'), {
+      migrateLegacy: false,
+    });
+    const repository = new LocalPurchaseRepository(database);
+    const first = legacySnapshot();
+    await repository.putPersistedSession(first.purchaseSessions[0]!);
+    await repository.putPersistedItem(first.purchaseItems[0]!);
+
+    const session: PersistedPurchaseSession = {
+      ...first.purchaseSessions[0]!,
+      id: 'remote-session',
+      syncId: 'remote-session',
+      totalPriceCents: 750,
+    };
+    const item: PurchaseItem = {
+      ...first.purchaseItems[0]!,
+      id: 'remote-item',
+      syncId: 'remote-item',
+      houseId: HOUSE_ID,
+      purchaseSessionId: session.id,
+      totalPriceCents: 750,
+      unitPriceCents: 750,
+    };
+    await repository.replaceHouseSnapshot(HOUSE_ID, [session], [item]);
+
+    expect(await repository.listPersistedSessions(HOUSE_ID)).toEqual([session]);
+    expect(await repository.listPersistedItems(HOUSE_ID)).toEqual([expect.objectContaining(item)]);
+    expect(await repository.listCompletedSessions(HOUSE_ID)).toEqual([
+      expect.objectContaining({ id: session.id, totalPriceCents: 750 }),
+    ]);
+  });
 });

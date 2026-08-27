@@ -62,9 +62,9 @@ Ao clicar em **Adicionar à lista**, `ProductService.addToShoppingList` consulta
 impede duplicação por `productId`/`houseProductId` e copia quantidade, unidade, categoria, marca e
 observações padrão mantendo o ID existente. A decisão é sempre do usuário.
 
-## Evolução futura para backend
+## Sincronização
 
-Um backend futuro deve armazenar produtos e configurações manuais, além das compras originais. Os
-relatórios e sugestões devem continuar derivados, com consultas autorizadas por `houseId`. Regras de
-sincronização, conflitos e automação opcional serão decisões separadas; esta etapa não inclui API,
-login, Supabase nem sincronização entre dispositivos.
+Produtos, compras originais e orçamento são sincronizados por `houseId`. Os relatórios e sugestões
+continuam derivados localmente dos dados já presentes no IndexedDB e, portanto, abrem offline. Uma
+compra concluída recebida por Realtime atualiza o cache e recalcula as projeções sem persistir totais,
+gráficos ou relatórios prontos.

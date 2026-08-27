@@ -1,3 +1,5 @@
+import { CASAE_TIME_ZONE } from './casae-date';
+
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -8,6 +10,7 @@ const quantityFormatter = new Intl.NumberFormat('pt-BR', {
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: CASAE_TIME_ZONE,
   day: '2-digit',
   month: 'short',
   hour: '2-digit',
@@ -15,17 +18,20 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
 });
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: CASAE_TIME_ZONE,
   day: '2-digit',
   month: 'long',
   year: 'numeric',
 });
 
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: CASAE_TIME_ZONE,
   hour: '2-digit',
   minute: '2-digit',
 });
 
 const monthYearFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: CASAE_TIME_ZONE,
   month: 'long',
   year: 'numeric',
 });

@@ -40,7 +40,10 @@ As migrations em `supabase/migrations` devem ser aplicadas na ordem do nome:
 2. `202608260001_online_identity.sql`: perfil global final, status/ID da membership, convites,
    RPCs transacionais, grants mínimos e policies finais;
 3. `202608260002_shopping_list_sync.sql`: Lista remota, tombstones, índices, RLS, RPC idempotente e
-   publicação Realtime.
+   publicação Realtime;
+4. `202608260003_catalog_stores_sync.sql`: categorias, produtos e mercados;
+5. `202608260004_purchase_live_sync.sql`: sessões e itens de compra compartilhados;
+6. `202608260005_budget_sync.sql`: orçamento mensal único por Casa.
 
 ### Tabelas
 
@@ -51,7 +54,9 @@ As migrations em `supabase/migrations` devem ser aplicadas na ordem do nome:
 - `house_invites`: guarda somente SHA-256 do token, criador, validade e consumo. O token aberto só é
   devolvido uma vez pela RPC de criação.
 - `shopping_items`: UUID criado no cliente, Casa, snapshots da Lista, autoria, timestamps e
-  `deleted_at`. `product_id` e `category_id` são opcionais porque Catálogo ainda não foi migrado.
+  `deleted_at`;
+- `purchase_sessions` e `purchase_items`: compras ativas/concluídas/canceladas e seus snapshots;
+- `house_budgets`: um orçamento em centavos por Casa, ano e mês.
 
 `create_house` insere Casa e owner membership na mesma transação PostgreSQL. `create_house_invite`
 exige owner e gera 96 bits aleatórios. `accept_house_invite` bloqueia a linha, valida expiração/uso,

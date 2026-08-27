@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import type { BudgetService } from '../../application/budget-service';
 import { defaultBudgetService } from '../../app/app-services';
 import type { HouseBudget } from '../../domain/budget';
+import type { ShoppingSyncStatus } from '../../domain/shopping-list';
 import { budgetContext } from './BudgetContext';
 import { useHousehold } from '../house/HouseContext';
 
@@ -16,23 +17,31 @@ export function BudgetProvider({
   const [budgets, setBudgets] = useState<HouseBudget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<ShoppingSyncStatus>({ state: 'local', pending: 0 });
+
+  const refreshBudgets = useCallback(async () => {
+    const saved = await service.list(activeHouse.id);
+    setBudgets(saved);
+    setError(null);
+  }, [activeHouse.id, service]);
 
   useEffect(() => {
     let current = true;
+    const unsubscribe = service.subscribe(
+      activeHouse.id,
+      () => void refreshBudgets(),
+      (status) => current && setSyncStatus(status),
+    );
     service
-      .list(activeHouse.id)
-      .then((saved) => {
-        if (current) {
-          setBudgets(saved);
-          setError(null);
-        }
-      })
+      .syncNow(activeHouse.id)
+      .then(refreshBudgets)
       .catch(() => current && setError('Não foi possível abrir os orçamentos locais.'))
       .finally(() => current && setIsLoading(false));
     return () => {
       current = false;
+      unsubscribe();
     };
-  }, [activeHouse.id, service]);
+  }, [activeHouse.id, refreshBudgets, service]);
 
   const setMonthlyBudget = useCallback(
     async (year: number, month: number, amountCents: number) => {
@@ -48,8 +57,8 @@ export function BudgetProvider({
   );
 
   const value = useMemo(
-    () => ({ budgets, isLoading, error, setMonthlyBudget }),
-    [budgets, error, isLoading, setMonthlyBudget],
+    () => ({ budgets, isLoading, error, syncStatus, setMonthlyBudget }),
+    [budgets, error, isLoading, setMonthlyBudget, syncStatus],
   );
   return <budgetContext.Provider value={value}>{children}</budgetContext.Provider>;
 }

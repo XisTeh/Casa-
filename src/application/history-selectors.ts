@@ -1,4 +1,5 @@
 import type { PurchaseItem, PurchaseSession } from '../domain/purchase';
+import { getCasaeDateParts, getCasaeDayOrdinal } from './casae-date';
 
 export type HistoryPeriod = 'all' | '30-days' | '90-days' | 'current-year';
 
@@ -39,14 +40,15 @@ export function filterPurchaseHistory(
   now = new Date(),
 ) {
   const query = normalize(filters.query);
-  const threshold = new Date(now);
-  if (filters.period === '30-days') threshold.setDate(threshold.getDate() - 30);
-  if (filters.period === '90-days') threshold.setDate(threshold.getDate() - 90);
-  if (filters.period === 'current-year') threshold.setMonth(0, 1);
-  threshold.setHours(0, 0, 0, 0);
+  const today = getCasaeDayOrdinal(now);
+  const currentYear = getCasaeDateParts(now).year;
 
   return sessions.filter((session) => {
-    if (filters.period !== 'all' && new Date(sessionDate(session)) < threshold) return false;
+    const sessionParts = getCasaeDateParts(sessionDate(session));
+    const ageInDays = today - getCasaeDayOrdinal(sessionDate(session));
+    if (filters.period === '30-days' && ageInDays > 30) return false;
+    if (filters.period === '90-days' && ageInDays > 90) return false;
+    if (filters.period === 'current-year' && sessionParts.year !== currentYear) return false;
     if (filters.storeId && session.storeId !== filters.storeId) return false;
     if (filters.buyer && session.purchasedByNameSnapshot !== filters.buyer) return false;
     if (
@@ -74,8 +76,8 @@ export function groupPurchasesByMonth(sessions: PurchaseSession[]): PurchaseMont
     .sort((first, second) => sessionDate(second).localeCompare(sessionDate(first)))
     .forEach((session) => {
       const date = sessionDate(session);
-      const parsedDate = new Date(date);
-      const key = `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, '0')}`;
+      const parsedDate = getCasaeDateParts(date);
+      const key = `${parsedDate.year}-${String(parsedDate.month).padStart(2, '0')}`;
       const group = groups.get(key) ?? { key, date, sessions: [] };
       group.sessions.push(session);
       groups.set(key, group);

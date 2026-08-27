@@ -1,11 +1,34 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { casaeManifest } from './src/pwa/manifest.ts';
+import {
+  DEV_SERVICE_WORKER_PATH,
+  DEV_SERVICE_WORKER_SOURCE,
+} from './src/pwa/dev-service-worker.ts';
+
+function devServiceWorkerCleanup(): Plugin {
+  return {
+    name: 'casae-dev-service-worker-cleanup',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+        if (pathname !== DEV_SERVICE_WORKER_PATH) return next();
+        response.statusCode = 200;
+        response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+        response.setHeader('Cache-Control', 'no-store');
+        response.setHeader('Service-Worker-Allowed', '/');
+        response.end(DEV_SERVICE_WORKER_SOURCE);
+      });
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
+    devServiceWorkerCleanup(),
     react(),
     VitePWA({
       registerType: 'prompt',

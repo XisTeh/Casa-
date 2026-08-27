@@ -1,10 +1,12 @@
 import { createContext, useContext } from 'react';
 import type { HouseBudget } from '../../domain/budget';
+import type { ShoppingSyncStatus } from '../../domain/shopping-list';
 
 export type BudgetContextValue = {
   budgets: HouseBudget[];
   isLoading: boolean;
   error: string | null;
+  syncStatus: ShoppingSyncStatus;
   setMonthlyBudget: (year: number, month: number, amountCents: number) => Promise<void>;
 };
 

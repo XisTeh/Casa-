@@ -289,11 +289,12 @@ export class OfflineFirstShoppingRepository implements OnlineShoppingListReposit
       : remote;
     const pendingId = outboxId(remote.houseId, remote.id);
     const pending = await this.getOutbox(pendingId);
-    if (local && wins(local, mergedRemote) && pending) return;
+    const ownPending = pending?.actorId === this.currentUserId ? pending : undefined;
+    if (local && wins(local, mergedRemote) && ownPending) return;
     const native = await this.database.getNativeDatabase();
     if (!native) {
       this.database.getMemoryDatabase().shoppingItems.set(remote.id, clone(mergedRemote));
-      if (!pending || !wins(pending.payload, mergedRemote)) {
+      if (ownPending && !wins(ownPending.payload, mergedRemote)) {
         this.database.getMemoryDatabase().syncOutbox.delete(pendingId);
       }
       return;
@@ -303,7 +304,7 @@ export class OfflineFirstShoppingRepository implements OnlineShoppingListReposit
       'readwrite',
     );
     transaction.objectStore(CASAE_STORES.shoppingItems).put(mergedRemote);
-    if (!pending || !wins(pending.payload, mergedRemote)) {
+    if (ownPending && !wins(ownPending.payload, mergedRemote)) {
       transaction.objectStore(CASAE_STORES.syncOutbox).delete(pendingId);
     }
     await transactionToPromise(transaction);

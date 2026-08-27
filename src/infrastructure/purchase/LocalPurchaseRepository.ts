@@ -272,6 +272,43 @@ export class LocalPurchaseRepository implements PurchaseRepository {
     }
   }
 
+  async replaceHouseSnapshot(
+    houseId: string,
+    sessions: PersistedPurchaseSession[],
+    items: PurchaseItem[],
+  ) {
+    await this.initialize();
+    const native = await this.database.getNativeDatabase();
+    if (!native) {
+      const memory = this.database.getMemoryDatabase();
+      for (const [id, session] of memory.purchaseSessions) {
+        if (session.houseId === houseId) memory.purchaseSessions.delete(id);
+      }
+      for (const [id, item] of memory.purchaseItems) {
+        if (item.houseId === houseId) memory.purchaseItems.delete(id);
+      }
+      sessions.forEach((session) => memory.purchaseSessions.set(session.id, { ...session }));
+      items.forEach((item) => memory.purchaseItems.set(item.id, cloneItem(item)));
+      return;
+    }
+
+    const transaction = native.transaction(
+      [CASAE_STORES.purchaseSessions, CASAE_STORES.purchaseItems],
+      'readwrite',
+    );
+    const sessionStore = transaction.objectStore(CASAE_STORES.purchaseSessions);
+    const itemStore = transaction.objectStore(CASAE_STORES.purchaseItems);
+    const [sessionKeys, itemKeys] = await Promise.all([
+      requestToPromise(sessionStore.index('houseId').getAllKeys(houseId)),
+      requestToPromise(itemStore.index('houseId').getAllKeys(houseId)),
+    ]);
+    sessionKeys.forEach((key) => sessionStore.delete(key));
+    itemKeys.forEach((key) => itemStore.delete(key));
+    sessions.forEach((session) => sessionStore.put(session));
+    items.forEach((item) => itemStore.put(item));
+    await transactionToPromise(transaction);
+  }
+
   private async getPersistedSession(id: string): Promise<PersistedPurchaseSession | undefined> {
     await this.initialize();
     const nativeDatabase = await this.database.getNativeDatabase();

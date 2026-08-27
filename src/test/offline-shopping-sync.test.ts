@@ -14,6 +14,7 @@ import { LocalShoppingRepository } from '../infrastructure/shopping/LocalShoppin
 const HOUSE_A = 'a0000000-0000-4000-8000-000000000001';
 const HOUSE_B = 'b0000000-0000-4000-8000-000000000002';
 const USER_A = '10000000-0000-4000-8000-000000000001';
+const USER_B = '20000000-0000-4000-8000-000000000002';
 
 function copy<T>(value: T): T {
   return structuredClone(value);
@@ -246,9 +247,15 @@ describe('sincronização offline-first da Lista', () => {
     const accountA = new ShoppingListService(
       new OfflineFirstShoppingRepository(database, remote, USER_A, runtime),
     );
-    await accountA.create(input('Feijão'), actor());
+    const pending = await accountA.create(input('Feijão local'), actor());
+    remote.items.set(pending.id, {
+      ...pending,
+      productName: 'Feijão remoto',
+      updatedAt: new Date(new Date(pending.updatedAt).getTime() - 1_000).toISOString(),
+      updatedByMemberId: USER_B,
+    });
 
-    remote.currentUserId = '20000000-0000-4000-8000-000000000002';
+    remote.currentUserId = USER_B;
     runtime.online = true;
     const staleAccountA = new OfflineFirstShoppingRepository(database, remote, USER_A, runtime);
     await staleAccountA.syncNow(HOUSE_A);
@@ -258,10 +265,14 @@ describe('sincronização offline-first da Lista', () => {
       remote.currentUserId,
       runtime,
     );
+    await accountB.syncNow(HOUSE_A);
 
     expect(remote.applyCalls).toEqual([]);
     expect(await staleAccountA.getStatus(HOUSE_A)).toMatchObject({ pending: 1 });
     expect(await accountB.getStatus(HOUSE_A)).toMatchObject({ pending: 0 });
+    expect(await accountB.list(HOUSE_A)).toEqual([
+      expect.objectContaining({ productName: 'Feijão remoto', updatedByMemberId: USER_B }),
+    ]);
   });
 
   it('mantém inclusões independentes, envia somente a Casa solicitada e resolve update concorrente', async () => {

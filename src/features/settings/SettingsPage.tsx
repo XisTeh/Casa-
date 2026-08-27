@@ -30,6 +30,7 @@ import { PwaInstallPanel } from '../../pwa/PwaInstallPanel';
 import { useShoppingList } from '../shopping-list/ShoppingListContext';
 import { useProducts } from '../products/ProductContext';
 import { usePurchase } from '../purchase/PurchaseContext';
+import { useBudgets } from '../spending/BudgetContext';
 
 type DialogState =
   'edit-house' | 'create-house' | 'add-member' | 'edit-profile' | HouseMember | null;
@@ -41,6 +42,7 @@ export function SettingsPage() {
   const { syncStatus } = useShoppingList();
   const { syncStatus: catalogSyncStatus } = useProducts();
   const { syncStatus: purchaseSyncStatus } = usePurchase();
+  const { syncStatus: budgetSyncStatus } = useBudgets();
   const { houses, activeHouse, members, activeMember } = household;
   const [dialog, setDialog] = useState<DialogState>(null);
   const [removing, setRemoving] = useState<HouseMember | null>(null);
@@ -49,19 +51,26 @@ export function SettingsPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [joining, setJoining] = useState(false);
   const isOwner = activeMember.role === 'owner';
-  const totalPending = syncStatus.pending + catalogSyncStatus.pending + purchaseSyncStatus.pending;
+  const totalPending =
+    syncStatus.pending +
+    catalogSyncStatus.pending +
+    purchaseSyncStatus.pending +
+    budgetSyncStatus.pending;
   const generalSyncState =
     syncStatus.state === 'offline' ||
     catalogSyncStatus.state === 'offline' ||
-    purchaseSyncStatus.state === 'offline'
+    purchaseSyncStatus.state === 'offline' ||
+    budgetSyncStatus.state === 'offline'
       ? 'offline'
       : syncStatus.state === 'error' ||
           catalogSyncStatus.state === 'error' ||
-          purchaseSyncStatus.state === 'error'
+          purchaseSyncStatus.state === 'error' ||
+          budgetSyncStatus.state === 'error'
         ? 'error'
         : syncStatus.state === 'syncing' ||
             catalogSyncStatus.state === 'syncing' ||
-            purchaseSyncStatus.state === 'syncing'
+            purchaseSyncStatus.state === 'syncing' ||
+            budgetSyncStatus.state === 'syncing'
           ? 'syncing'
           : totalPending
             ? 'pending'
@@ -262,8 +271,8 @@ export function SettingsPage() {
               <Mail aria-hidden="true" size={17} /> {household.accountEmail}
             </p>
             <small>
-              Sua identidade, Casas, Lista, categorias, produtos e mercados usam uma sessão
-              protegida. Compras, histórico, gastos e orçamento continuam locais neste dispositivo.
+              Sua identidade, Casas, Lista, catálogo, compras e orçamento usam uma sessão protegida
+              e continuam disponíveis offline após a sincronização.
             </small>
             <p className="settings-sync-status" role="status">
               {generalSyncState === 'offline'

@@ -30,6 +30,7 @@ import {
   createDefaultOnlineHouseService,
   createDefaultOnlineShoppingListService,
   createDefaultOnlineCatalogServices,
+  createDefaultOnlineBudgetService,
 } from './app-services';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { useAuth } from '../features/auth/AuthContext';
@@ -180,6 +181,12 @@ function RemoteApplication({
         : undefined,
     [authenticatedUserId, remoteShoppingListService],
   );
+  const remoteBudgetService = useMemo(
+    () =>
+      props.budgetService ??
+      (authenticatedUserId ? createDefaultOnlineBudgetService(authenticatedUserId) : undefined),
+    [authenticatedUserId, props.budgetService],
+  );
   if (auth.initializing) {
     return (
       <main className="auth-page">
@@ -209,6 +216,7 @@ function RemoteApplication({
     >
       <HouseScopedApplication
         {...props}
+        budgetService={remoteBudgetService}
         categoryService={props.categoryService ?? remoteCatalogServices?.categoryService}
         productService={props.productService ?? remoteCatalogServices?.productService}
         purchaseService={props.purchaseService ?? remoteCatalogServices?.purchaseService}

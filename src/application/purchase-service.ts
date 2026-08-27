@@ -52,6 +52,12 @@ export class PurchaseService {
     if (isPurchaseSyncRepository(this.repository)) await this.repository.syncNow(houseId);
   }
 
+  getLegacyMigration(houseId: string) {
+    return isPurchaseSyncRepository(this.repository)
+      ? this.repository.getLegacyMigration(houseId)
+      : Promise.resolve(null);
+  }
+
   async listActiveSessions(houseId = HOUSE_ID) {
     await this.repository.initialize();
     return this.repository.listActiveSessions(houseId);

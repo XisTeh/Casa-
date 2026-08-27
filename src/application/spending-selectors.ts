@@ -2,6 +2,7 @@ import type { HouseBudget } from '../domain/budget';
 import type { PurchaseItem, PurchaseSession } from '../domain/purchase';
 import { shoppingCategoryLabels } from '../domain/shopping-list';
 import { normalizeCatalogName } from '../domain/catalog';
+import { getCasaeDateParts } from './casae-date';
 
 export type MonthPeriod = { year: number; month: number };
 export type SpendingComparison = {
@@ -46,12 +47,13 @@ export type MonthlySpendingProjection = {
 };
 
 export function getCurrentMonth(date = new Date()): MonthPeriod {
-  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+  const { year, month } = getCasaeDateParts(date);
+  return { year, month };
 }
 
 export function shiftMonth(period: MonthPeriod, offset: number): MonthPeriod {
-  const date = new Date(period.year, period.month - 1 + offset, 1);
-  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+  const date = new Date(Date.UTC(period.year, period.month - 1 + offset, 1));
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
 }
 
 export function parseMonthPeriod(value: string | null, fallback = getCurrentMonth()): MonthPeriod {
@@ -70,8 +72,8 @@ function sessionDate(session: PurchaseSession) {
 
 function isInPeriod(session: PurchaseSession, period: MonthPeriod) {
   if (session.status !== 'completed') return false;
-  const date = sessionDate(session);
-  return date.getFullYear() === period.year && date.getMonth() + 1 === period.month;
+  const date = getCasaeDateParts(sessionDate(session));
+  return date.year === period.year && date.month === period.month;
 }
 
 export function getMonthlySessions(sessions: PurchaseSession[], period: MonthPeriod) {
@@ -178,8 +180,8 @@ export function getMonthlyCumulativeSeries(
 ): CumulativeSpendingPoint[] {
   const daily = new Map<number, { date: string; totalCents: number }>();
   getMonthlySessions(sessions, period).forEach((session) => {
-    const date = sessionDate(session);
-    const day = date.getDate();
+    const date = getCasaeDateParts(sessionDate(session));
+    const day = date.day;
     const current = daily.get(day) ?? {
       date: session.completedAt ?? session.startedAt,
       totalCents: 0,
@@ -245,7 +247,7 @@ export function buildMonthlySpendingProjection(
   const current = getCurrentMonth(now);
   const isCurrent = current.year === period.year && current.month === period.month;
   const daysRemaining = isCurrent
-    ? new Date(period.year, period.month, 0).getDate() - now.getDate()
+    ? new Date(Date.UTC(period.year, period.month, 0)).getUTCDate() - getCasaeDateParts(now).day
     : undefined;
   const dailyAvailableCents =
     daysRemaining !== undefined && daysRemaining > 0 && budgetProgress.availableCents !== undefined

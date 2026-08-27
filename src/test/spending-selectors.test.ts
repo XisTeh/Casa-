@@ -17,7 +17,7 @@ function session(
   completedAt: string,
   totalPriceCents: number,
   options: {
-    status?: 'active' | 'completed';
+    status?: 'active' | 'completed' | 'cancelled';
     storeId?: string;
     storeName?: string;
     categoryName?: string;
@@ -30,7 +30,9 @@ function session(
     storeNameSnapshot: options.storeName ?? 'Mercado histórico',
     status: options.status ?? 'completed',
     startedAt: completedAt,
-    completedAt: options.status === 'active' ? undefined : completedAt,
+    completedAt:
+      options.status === 'active' || options.status === 'cancelled' ? undefined : completedAt,
+    cancelledAt: options.status === 'cancelled' ? completedAt : undefined,
     purchasedByNameSnapshot: 'Raabe',
     totalPriceCents,
     items: [
@@ -75,10 +77,20 @@ describe('seletores de gastos mensais', () => {
       session('a', '2026-08-03T12:00:00.000Z', 1_001),
       session('b', '2026-08-04T12:00:00.000Z', 2_002),
       session('active', '2026-08-05T12:00:00.000Z', 99_999, { status: 'active' }),
+      session('cancelled', '2026-08-06T12:00:00.000Z', 88_888, { status: 'cancelled' }),
       session('july', '2026-07-31T12:00:00.000Z', 50_00),
     ];
     expect(getMonthlySpending(sessions, august)).toBe(3_003);
     expect(buildMonthlySpendingProjection(sessions, [], august).purchaseCount).toBe(2);
+  });
+
+  it('agrupa a virada de mês pelo horário de Brasília', () => {
+    const beforeMidnight = session('before', '2026-09-01T02:30:00.000Z', 10_00);
+    const afterMidnight = session('after', '2026-09-01T03:30:00.000Z', 20_00);
+    expect(getMonthlySpending([beforeMidnight, afterMidnight], august)).toBe(10_00);
+    expect(getMonthlySpending([beforeMidnight, afterMidnight], { year: 2026, month: 9 })).toBe(
+      20_00,
+    );
   });
 
   it('calcula comparação, alta, queda, estável e mês anterior vazio sem infinito', () => {

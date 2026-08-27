@@ -178,7 +178,9 @@ export class OfflineFirstCatalogSync {
   }
 
   async getStatus(houseId: string): Promise<ShoppingSyncStatus> {
-    const entries = await this.listOutbox(houseId);
+    const entries = (await this.listOutbox(houseId)).filter(
+      (entry) => !this.actorId || entry.actorId === this.actorId,
+    );
     if (!this.runtime.isOnline()) return { state: 'offline', pending: entries.length };
     if (this.running.has(houseId)) return { state: 'syncing', pending: entries.length };
     if (entries.some((entry) => entry.lastError))
@@ -298,10 +300,12 @@ export class OfflineFirstCatalogSync {
       prepared = { ...prepared, categoryId: localCategoryId! } as Product;
     }
     const pending = await this.getOutbox(outboxId(type, remote.houseId, prepared.id));
-    if (local?.syncId && wins(local, prepared)) return;
+    const ownPending =
+      pending && (!this.actorId || pending.actorId === this.actorId) ? pending : undefined;
+    if (ownPending && local?.syncId && wins(local, prepared)) return;
     await this.putEntity(type, prepared);
-    if (!pending || !wins(pending.payload as CatalogSyncEntity, prepared))
-      await this.deleteOutbox(pending?.id);
+    if (ownPending && !wins(ownPending.payload as CatalogSyncEntity, prepared))
+      await this.deleteOutbox(ownPending.id);
   }
 
   async getLegacyMigration(houseId: string): Promise<LegacyCatalogMigration | null> {

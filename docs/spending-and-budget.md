@@ -13,9 +13,11 @@ mês anterior não tem gasto, a interface informa que não há comparação em v
 
 ## Orçamento
 
-`HouseBudget` é persistido na store `houseBudgets` com chave estável e índice único por `houseId`,
-ano e mês. Salvar novamente atualiza o mesmo registro e preserva sua data de criação. Não há orçamento
-implícito nem valor demonstrativo: sem cadastro, a interface mostra claramente “Sem orçamento”.
+`HouseBudget` é persistido primeiro na store `houseBudgets` com chave estável e índice único por
+`houseId`, ano e mês. No modo online, a mesma `syncOutbox` envia o registro para `house_budgets`, cuja
+constraint `UNIQUE(house_id, year, month)` impede duplicatas. Realtime atualiza os demais membros e
+salvar novamente preserva a identidade remota e a data de criação. Não há orçamento implícito nem
+valor demonstrativo: sem cadastro, a interface mostra claramente “Sem orçamento”.
 
 O progresso usa os seguintes estados:
 
@@ -44,15 +46,13 @@ curva de dados.
 
 ## Reatividade e navegação
 
-Finalizar uma compra atualiza `PurchaseContext`; Dashboard e Gastos recalculam as projeções sem
-reload. Salvar o orçamento atualiza `BudgetContext` da mesma forma. O mês selecionado fica no parâmetro
-`mes=AAAA-MM`, permitindo voltar/avançar, recarregar ou compartilhar a visão local sem perder o
-período escolhido.
+Finalizar ou receber uma compra por Realtime atualiza o IndexedDB e o `PurchaseContext`; Dashboard,
+Histórico, Gastos e relatório recalculam as projeções sem reload. Salvar ou receber um orçamento
+atualiza `BudgetContext` da mesma forma. O mês selecionado fica no parâmetro `mes=AAAA-MM`.
 
-## Limites e evolução futura
+## Sincronização e autorização
 
-Os dados continuam exclusivamente locais: não há backend, conta, autenticação ou sincronização. Um
-backend futuro deverá implementar `BudgetRepository` e os repositories de compra existentes,
-autorizar o acesso por Casa e resolver conflitos. Os seletores financeiros podem permanecer puros;
-não se deve criar um segundo livro de despesas que concorra com compras concluídas como fonte de
-verdade.
+`OfflineFirstBudgetRepository` usa IndexedDB, outbox, retry e Realtime por Casa.
+`SupabaseBudgetRepository` acessa apenas a RPC idempotente e a leitura protegida por RLS. Somente
+membros ativos leem ou alteram o orçamento. Os seletores financeiros permanecem puros; não existe
+um segundo livro de despesas que concorra com compras concluídas como fonte de verdade.

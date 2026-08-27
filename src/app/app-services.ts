@@ -24,6 +24,8 @@ import { SupabaseCatalogRepository } from '../infrastructure/supabase/SupabaseCa
 import { OfflineFirstCatalogSync } from '../infrastructure/catalog/OfflineFirstCatalogRepository';
 import { OfflineFirstPurchaseRepository } from '../infrastructure/purchase/OfflineFirstPurchaseRepository';
 import { SupabasePurchaseRepository } from '../infrastructure/supabase/SupabasePurchaseRepository';
+import { OfflineFirstBudgetRepository } from '../infrastructure/budget/OfflineFirstBudgetRepository';
+import { SupabaseBudgetRepository } from '../infrastructure/supabase/SupabaseBudgetRepository';
 
 export const defaultLocalDatabase = new CasaeLocalDatabase();
 export const defaultHouseRepository = new LocalHouseRepository(defaultLocalDatabase);
@@ -109,3 +111,8 @@ export const createDefaultOnlineCatalogServices = (
     ),
   };
 };
+
+export const createDefaultOnlineBudgetService = (userId: string) =>
+  new BudgetService(
+    new OfflineFirstBudgetRepository(defaultLocalDatabase, new SupabaseBudgetRepository(), userId),
+  );

@@ -8,6 +8,7 @@ import {
 import type { AvatarCrop } from '../../domain/profile-avatar';
 import type { CatalogSyncOutboxEntry } from '../../domain/catalog-sync';
 import type { PurchaseSyncOutboxEntry } from '../../domain/purchase-sync';
+import type { BudgetSyncOutboxEntry } from '../../domain/budget-sync';
 import {
   HOUSE_ID,
   initialShoppingListSeed,
@@ -86,7 +87,10 @@ export type CasaeMemoryDatabase = {
   metadata: Map<string, LocalMetadata>;
   syncOutbox: Map<
     string,
-    ShoppingSyncOutboxEntry | CatalogSyncOutboxEntry | PurchaseSyncOutboxEntry
+    | ShoppingSyncOutboxEntry
+    | CatalogSyncOutboxEntry
+    | PurchaseSyncOutboxEntry
+    | BudgetSyncOutboxEntry
   >;
 };
 
