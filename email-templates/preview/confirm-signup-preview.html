@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preview do e-mail de confirmação • Casaê</title>
+    <style>
+      :root {
+        color: #1f2628;
+        background: #e9ece9;
+        font-family:
+          'Manrope',
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 10% 10%, rgb(232 121 74 / 14%), transparent 28rem),
+          radial-gradient(circle at 90% 90%, rgb(23 59 69 / 11%), transparent 32rem), #e9ece9;
+      }
+
+      .preview-header {
+        position: sticky;
+        z-index: 10;
+        top: 0;
+        display: flex;
+        min-height: 72px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 14px clamp(16px, 4vw, 40px);
+        border-bottom: 1px solid rgb(17 52 61 / 10%);
+        background: rgb(247 246 242 / 94%);
+        box-shadow: 0 8px 28px rgb(11 40 47 / 7%);
+        backdrop-filter: blur(18px);
+      }
+
+      .preview-brand {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .preview-mark {
+        display: flex;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #174853;
+      }
+
+      .preview-mark-roof {
+        height: 5px;
+        color: #e8794a;
+        font-family: 'Arial Black', Arial, sans-serif;
+        font-size: 19px;
+        font-weight: 900;
+        line-height: 8px;
+        position: relative;
+        top: 5px;
+      }
+
+      .preview-mark-letter {
+        height: 26px;
+        color: #f8faf9;
+        font-family: 'Arial Black', Arial, sans-serif;
+        font-size: 33px;
+        font-weight: 900;
+        line-height: 27px;
+        letter-spacing: -2px;
+      }
+
+      .preview-brand > div:last-child {
+        min-width: 0;
+      }
+
+      .preview-brand strong,
+      .preview-brand span {
+        display: block;
+      }
+
+      .preview-brand strong {
+        color: #11343d;
+        font-size: 18px;
+        letter-spacing: -0.04em;
+      }
+
+      .preview-brand span {
+        margin-top: 2px;
+        color: #7b8385;
+        font-size: 11px;
+      }
+
+      .preview-status {
+        color: #35616a;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      main {
+        width: min(100%, 1240px);
+        margin: 0 auto;
+        padding: 28px clamp(12px, 3vw, 32px) 48px;
+      }
+
+      .preview-intro {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        color: #0b282f;
+        font-size: clamp(24px, 4vw, 34px);
+        line-height: 1.15;
+        letter-spacing: -0.04em;
+      }
+
+      .preview-intro p {
+        max-width: 680px;
+        margin: 0;
+        color: #555e61;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .preview-grid {
+        display: grid;
+        align-items: start;
+        gap: 24px;
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 430px);
+      }
+
+      .preview-panel {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid rgb(17 52 61 / 12%);
+        border-radius: 24px;
+        background: #f7f6f2;
+        box-shadow: 0 18px 55px rgb(11 40 47 / 12%);
+      }
+
+      .preview-panel__top {
+        display: flex;
+        min-height: 52px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 14px;
+        border-bottom: 1px solid rgb(17 52 61 / 9%);
+        background: #ffffff;
+      }
+
+      .preview-panel__label {
+        color: #11343d;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .viewport-picker {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 5px;
+      }
+
+      .viewport-picker button {
+        min-width: 42px;
+        min-height: 30px;
+        padding: 4px 7px;
+        border: 1px solid rgb(17 52 61 / 12%);
+        border-radius: 9px;
+        color: #35616a;
+        background: #f7f6f2;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .viewport-picker button[aria-pressed='true'] {
+        border-color: #11343d;
+        color: #ffffff;
+        background: #11343d;
+      }
+
+      .frame-stage {
+        display: flex;
+        min-height: 940px;
+        justify-content: center;
+        overflow-x: auto;
+        padding: 14px;
+        background:
+          linear-gradient(45deg, rgb(17 52 61 / 3%) 25%, transparent 25%),
+          linear-gradient(-45deg, rgb(17 52 61 / 3%) 25%, transparent 25%), #dde2df;
+        background-position:
+          0 0,
+          0 8px;
+        background-size: 16px 16px;
+      }
+
+      iframe {
+        display: block;
+        height: 900px;
+        border: 0;
+        background: #f7f6f2;
+        box-shadow: 0 6px 24px rgb(11 40 47 / 12%);
+      }
+
+      #desktop-frame {
+        width: 100%;
+        max-width: 680px;
+      }
+
+      #mobile-frame {
+        width: 390px;
+        max-width: 100%;
+        transition: width 180ms ease;
+      }
+
+      .preview-error {
+        margin: 18px;
+        padding: 16px;
+        border-radius: 14px;
+        color: #873232;
+        background: #fff1ef;
+      }
+
+      @media (max-width: 920px) {
+        .preview-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .preview-intro {
+          align-items: start;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .preview-header {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .preview-panel__top {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .viewport-picker {
+          justify-content: flex-start;
+        }
+
+        .frame-stage {
+          padding: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="preview-header">
+      <div class="preview-brand">
+        <div class="preview-mark" aria-hidden="true">
+          <span class="preview-mark-roof">^</span>
+          <span class="preview-mark-letter">e</span>
+        </div>
+        <div>
+          <strong>Casaê</strong>
+          <span>Preview local • nenhum envio será feito</span>
+        </div>
+      </div>
+      <div id="preview-status" class="preview-status" role="status">Carregando template real…</div>
+    </header>
+
+    <main>
+      <div class="preview-intro">
+        <div>
+          <h1>Confirmação de cadastro</h1>
+          <p>
+            O conteúdo abaixo é carregado diretamente de
+            <strong>email-templates/confirm-signup.html</strong>. A harness apenas substitui a
+            variável de confirmação por uma URL segura de preview.
+          </p>
+        </div>
+      </div>
+
+      <div class="preview-grid">
+        <section class="preview-panel" aria-labelledby="desktop-label">
+          <div class="preview-panel__top">
+            <span id="desktop-label" class="preview-panel__label">Desktop • 680 px</span>
+          </div>
+          <div class="frame-stage">
+            <iframe id="desktop-frame" title="Preview desktop do e-mail" sandbox></iframe>
+          </div>
+        </section>
+
+        <section class="preview-panel" aria-labelledby="mobile-label">
+          <div class="preview-panel__top">
+            <span id="mobile-label" class="preview-panel__label"
+              >Mobile • <span id="mobile-width">390</span> px</span
+            >
+            <div class="viewport-picker" aria-label="Largura do preview mobile">
+              <button type="button" data-width="320" aria-pressed="false">320</button>
+              <button type="button" data-width="360" aria-pressed="false">360</button>
+              <button type="button" data-width="375" aria-pressed="false">375</button>
+              <button type="button" data-width="390" aria-pressed="true">390</button>
+              <button type="button" data-width="430" aria-pressed="false">430</button>
+              <button type="button" data-width="600" aria-pressed="false">600</button>
+            </div>
+          </div>
+          <div class="frame-stage">
+            <iframe id="mobile-frame" title="Preview mobile do e-mail" sandbox></iframe>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script type="module">
+      const templateUrl = '../confirm-signup.html';
+      const simulatedConfirmationUrl =
+        'https://casa-dusky-three.vercel.app/?email-confirmado=preview-casae';
+      const status = document.querySelector('#preview-status');
+      const desktopFrame = document.querySelector('#desktop-frame');
+      const mobileFrame = document.querySelector('#mobile-frame');
+      const mobileWidth = document.querySelector('#mobile-width');
+      const viewportButtons = [...document.querySelectorAll('[data-width]')];
+
+      try {
+        const response = await fetch(templateUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const template = await response.text();
+        const rendered = template.replaceAll('{{ .ConfirmationURL }}', simulatedConfirmationUrl);
+        desktopFrame.srcdoc = rendered;
+        mobileFrame.srcdoc = rendered;
+        status.textContent = 'Template real carregado • preview sem envio';
+      } catch (error) {
+        status.textContent = 'Não foi possível carregar o template';
+        const message = `<p class="preview-error">Falha ao carregar ${templateUrl}: ${String(error)}</p>`;
+        desktopFrame.srcdoc = message;
+        mobileFrame.srcdoc = message;
+      }
+
+      viewportButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const width = Number(button.dataset.width);
+          mobileFrame.style.width = `${width}px`;
+          mobileWidth.textContent = String(width);
+          viewportButtons.forEach((candidate) =>
+            candidate.setAttribute('aria-pressed', String(candidate === button)),
+          );
+        });
+      });
+    </script>
+  </body>
+</html>
