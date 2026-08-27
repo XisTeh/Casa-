@@ -35,6 +35,57 @@ test('exibe a home e navega pela estrutura principal', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Lista de compras' })).toBeVisible();
 });
 
+test('não recria dados demonstrativos após limpar os dados do site', async ({ page }) => {
+  const legacyCounts = async () =>
+    page.evaluate(async () => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('casae-local');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const stores = ['shoppingItems', 'products', 'categories', 'stores'] as const;
+      const transaction = database.transaction([...stores], 'readonly');
+      const counts = await Promise.all(
+        stores.map(
+          (storeName) =>
+            new Promise<number>((resolve, reject) => {
+              const request = transaction
+                .objectStore(storeName)
+                .index('houseId')
+                .count(IDBKeyRange.only('house-raabe-sidney'));
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => reject(request.error);
+            }),
+        ),
+      );
+      database.close();
+      return Object.fromEntries(stores.map((storeName, index) => [storeName, counts[index]]));
+    });
+
+  await page.goto('/configuracoes');
+  await expect(page.getByRole('heading', { name: 'Casa e perfis' })).toBeVisible();
+  expect(await legacyCounts()).toEqual({
+    shoppingItems: 0,
+    products: 0,
+    categories: 0,
+    stores: 0,
+  });
+
+  const devtools = await page.context().newCDPSession(page);
+  await devtools.send('Storage.clearDataForOrigin', {
+    origin: new URL(page.url()).origin,
+    storageTypes: 'all',
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Casa e perfis' })).toBeVisible();
+  expect(await legacyCounts()).toEqual({
+    shoppingItems: 0,
+    products: 0,
+    categories: 0,
+    stores: 0,
+  });
+});
+
 test('usa navegação inferior no mobile e sidebar no desktop', async ({ page }, testInfo) => {
   await page.goto('/');
 
@@ -900,7 +951,7 @@ test('isola dados ao criar e alternar Casas e registra o membro ativo', async ({
   await page.getByRole('button', { name: /Casa Antiga E2E/ }).click();
   await expect(page.getByRole('heading', { name: 'Casa Antiga E2E' })).toBeVisible();
   await page.goto('/lista');
-  await expect(page.getByText('8 itens faltando')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sua lista está vazia' })).toBeVisible();
   await expect(page.getByText('Café Casa Nova')).toHaveCount(0);
 
   await page.goto('/configuracoes');

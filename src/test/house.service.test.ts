@@ -62,6 +62,7 @@ describe('HouseService', () => {
   it('cria segunda Casa vazia, torna o membro atual owner e persiste a troca', async () => {
     const { repository, service, categories } = serviceFor('second-house');
     const initial = await service.getSnapshot();
+    expect(await categories.list(LEGACY_HOUSE_ID)).toEqual([]);
     const created = await service.createHouse('Apartamento 301', initial.activeMember);
 
     expect(created.houses).toHaveLength(2);

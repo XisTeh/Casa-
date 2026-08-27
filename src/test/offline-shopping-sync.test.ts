@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBKeyRange as FakeIDBKeyRange, indexedDB as fakeIndexedDB } from 'fake-indexeddb';
 import { ShoppingListService } from '../application/shopping-list-service';
 import { LEGACY_HOUSE_ID } from '../domain/house';
-import type { ShoppingListItem } from '../domain/shopping-list';
+import { initialShoppingListSeed, type ShoppingListItem } from '../domain/shopping-list';
 import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
 import {
   OfflineFirstShoppingRepository,
@@ -240,7 +240,9 @@ describe('sincronização offline-first da Lista', () => {
     const database = new CasaeLocalDatabase(databaseName('legacy'), { migrateLegacy: false });
     const repository = new OfflineFirstShoppingRepository(database, remote, USER_A, runtime);
     await repository.initialize();
-    const legacyBefore = await new LocalShoppingRepository(database).list(LEGACY_HOUSE_ID);
+    const local = new LocalShoppingRepository(database);
+    await local.create(initialShoppingListSeed[0]!);
+    const legacyBefore = await local.list(LEGACY_HOUSE_ID);
     const migration = await repository.getLegacyMigration(HOUSE_A);
 
     expect(migration?.count).toBe(legacyBefore.length);

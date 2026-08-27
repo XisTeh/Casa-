@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PurchaseService } from '../application/purchase-service';
 import { ShoppingListService } from '../application/shopping-list-service';
-import { HOUSE_ID } from '../domain/shopping-list';
+import { HOUSE_ID, initialShoppingListSeed } from '../domain/shopping-list';
 import { getPurchaseSubtotal } from '../domain/purchase';
 import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
 import { LocalPurchaseRepository } from '../infrastructure/purchase/LocalPurchaseRepository';
@@ -22,6 +22,7 @@ async function createServices(label: string) {
     undefined,
     shoppingListService,
   );
+  await Promise.all(initialShoppingListSeed.map((item) => shoppingRepository.create(item)));
   const items = await shoppingListService.list();
   return { items, purchaseRepository, purchaseService, shoppingListService };
 }

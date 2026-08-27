@@ -1,4 +1,9 @@
-import type { House, HouseMember, HouseMemberRole } from '../domain/house';
+import {
+  LEGACY_HOUSE_ID,
+  type House,
+  type HouseMember,
+  type HouseMemberRole,
+} from '../domain/house';
 import type { HouseRepository } from '../domain/house-repository';
 import type { ProfileAvatarData } from '../domain/profile-avatar';
 
@@ -43,7 +48,9 @@ export class HouseService {
     const storedMemberId = await this.repository.getActiveMemberId();
     const activeMember = members.find((member) => member.id === storedMemberId) ?? members[0];
     if (!activeMember) throw new Error('A Casa ativa não possui membros.');
-    await this.categories.ensureDefaultCategoriesForHouse(activeHouse.id);
+    if (activeHouse.id !== LEGACY_HOUSE_ID) {
+      await this.categories.ensureDefaultCategoriesForHouse(activeHouse.id);
+    }
     if (storedHouseId !== activeHouse.id) await this.repository.setActiveHouseId(activeHouse.id);
     if (storedMemberId !== activeMember.id)
       await this.repository.setActiveMemberId(activeMember.id);

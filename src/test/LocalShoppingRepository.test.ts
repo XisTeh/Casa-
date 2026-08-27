@@ -38,14 +38,11 @@ describe('LocalShoppingRepository', () => {
     expect(restoredItems.some((item) => item.id === 'custom-sugar')).toBe(true);
   });
 
-  it('cria o seed apenas na primeira inicialização do banco', async () => {
-    const name = databaseName('seed-once');
+  it('mantém uma instalação nova vazia inclusive após reabrir o banco', async () => {
+    const name = databaseName('clean-install');
     const firstRepository = new LocalShoppingRepository(name);
     await firstRepository.initialize();
-    const seededItems = await firstRepository.list(HOUSE_ID);
-
-    expect(seededItems).toHaveLength(8);
-    await Promise.all(seededItems.map((item) => firstRepository.remove(HOUSE_ID, item.id)));
+    expect(await firstRepository.list(HOUSE_ID)).toEqual([]);
 
     const restoredRepository = new LocalShoppingRepository(name);
     await restoredRepository.initialize();

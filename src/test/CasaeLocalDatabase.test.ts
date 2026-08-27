@@ -75,6 +75,33 @@ function legacySnapshot(): LegacyDatabaseSnapshot {
   };
 }
 
+function emptyLegacySnapshot(): LegacyDatabaseSnapshot {
+  return {
+    shoppingDatabaseFound: false,
+    shoppingSeeded: false,
+    shoppingItems: [],
+    purchaseDatabaseFound: false,
+    purchaseSessions: [],
+    purchaseItems: [],
+  };
+}
+
+function deleteDatabase(name: string) {
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error(`O banco ${name} permaneceu aberto.`));
+  });
+}
+
+async function expectLegacyDomainsEmpty(database: CasaeLocalDatabase) {
+  await expect(new LocalShoppingRepository(database).list(LEGACY_HOUSE_ID)).resolves.toEqual([]);
+  await expect(new LocalProductRepository(database).list(LEGACY_HOUSE_ID)).resolves.toEqual([]);
+  await expect(new LocalCategoryRepository(database).list(LEGACY_HOUSE_ID)).resolves.toEqual([]);
+  await expect(new LocalStoreRepository(database).list(LEGACY_HOUSE_ID)).resolves.toEqual([]);
+}
+
 function createVersionTwoDatabase(name: string, item: ShoppingListItem) {
   return new Promise<void>((resolve, reject) => {
     const request = indexedDB.open(name, 2);
@@ -261,6 +288,45 @@ describe('CasaeLocalDatabase', () => {
       legacyReader: async () => ({ ...legacySnapshot(), shoppingItems: [] }),
     });
     expect(await new LocalShoppingRepository(database).list(HOUSE_ID)).toEqual([]);
+  });
+
+  it('inicializa um IndexedDB novo sem dados demonstrativos no espaço legacy', async () => {
+    vi.stubGlobal('indexedDB', fakeIndexedDB);
+    vi.stubGlobal('IDBKeyRange', FakeIDBKeyRange);
+    const reader = vi.fn(async () => emptyLegacySnapshot());
+    const database = new CasaeLocalDatabase(databaseName('clean-install'), {
+      migrateLegacy: true,
+      legacyReader: reader,
+    });
+
+    await database.initialize();
+
+    await expectLegacyDomainsEmpty(database);
+    expect(reader).toHaveBeenCalledTimes(1);
+  });
+
+  it('continua vazio ao recriar o IndexedDB depois de limpar os dados do site', async () => {
+    vi.stubGlobal('indexedDB', fakeIndexedDB);
+    vi.stubGlobal('IDBKeyRange', FakeIDBKeyRange);
+    const name = databaseName('clear-and-reopen');
+    const reader = vi.fn(async () => emptyLegacySnapshot());
+    const firstDatabase = new CasaeLocalDatabase(name, {
+      migrateLegacy: true,
+      legacyReader: reader,
+    });
+    await firstDatabase.initialize();
+    await expectLegacyDomainsEmpty(firstDatabase);
+    (await firstDatabase.getNativeDatabase())?.close();
+    await deleteDatabase(name);
+
+    const reopenedDatabase = new CasaeLocalDatabase(name, {
+      migrateLegacy: true,
+      legacyReader: reader,
+    });
+    await reopenedDatabase.initialize();
+
+    await expectLegacyDomainsEmpty(reopenedDatabase);
+    expect(reader).toHaveBeenCalledTimes(2);
   });
 
   it('atualiza a versão 2 para a 5 preservando dados e adicionando orçamentos', async () => {

@@ -12,7 +12,6 @@ import type { BudgetSyncOutboxEntry } from '../../domain/budget-sync';
 import type { ProfileAvatarSyncOutboxEntry } from '../../domain/profile-avatar-sync';
 import {
   HOUSE_ID,
-  initialShoppingListSeed,
   type ShoppingListItem,
   type ShoppingSyncOutboxEntry,
 } from '../../domain/shopping-list';
@@ -56,7 +55,6 @@ const LEGACY_PURCHASE_SESSIONS_STORE = 'purchase-sessions';
 const LEGACY_PURCHASE_ITEMS_STORE = 'purchase-items';
 const LEGACY_SEED_KEY = 'shopping-list-seed-v1';
 const MIGRATION_KEY = 'legacy-databases-to-casae-local-v1';
-const SEED_KEY = 'shopping-list-seed-v1';
 export const CATALOG_MIGRATION_KEY = 'catalog-products-categories-v2';
 export const RECURRENCE_MIGRATION_KEY = 'product-recurrence-v5';
 
@@ -470,9 +468,10 @@ export function prepareCatalogData(
 ) {
   const now = new Date().toISOString();
   const houses = new Set([
-    HOUSE_ID,
     ...shoppingItems.map((item) => item.houseId || HOUSE_ID),
     ...purchaseItems.map((item) => item.houseId || HOUSE_ID),
+    ...existingProducts.map((product) => product.houseId),
+    ...existingCategories.map((category) => category.houseId),
   ]);
   const categories = new Map(existingCategories.map((category) => [category.id, { ...category }]));
 
@@ -697,9 +696,6 @@ export class CasaeLocalDatabase {
       const prepared = prepareLegacyData(snapshot);
       const transaction = database.transaction(Object.values(CASAE_STORES), 'readwrite');
       const shoppingStore = transaction.objectStore(CASAE_STORES.shoppingItems);
-      const existingShoppingItems = await requestToPromise(
-        shoppingStore.count() as IDBRequest<number>,
-      );
 
       snapshot.shoppingItems.forEach((item) => shoppingStore.put(item));
       prepared.sessions.forEach((session) =>
@@ -710,16 +706,7 @@ export class CasaeLocalDatabase {
       );
       prepared.stores.forEach((store) => transaction.objectStore(CASAE_STORES.stores).put(store));
 
-      const shouldSeed =
-        existingShoppingItems === 0 &&
-        !snapshot.shoppingDatabaseFound &&
-        snapshot.shoppingItems.length === 0;
-      if (shouldSeed) {
-        initialShoppingListSeed.forEach((item) => shoppingStore.put(item));
-      }
-
       const metadataStore = transaction.objectStore(CASAE_STORES.metadata);
-      metadataStore.put({ key: SEED_KEY, value: shouldSeed || snapshot.shoppingSeeded });
       metadataStore.put({ key: MIGRATION_KEY, value: true, completedAt: new Date().toISOString() });
       await transactionToPromise(transaction);
     }
@@ -845,18 +832,6 @@ export class CasaeLocalDatabase {
       prepared.items.forEach((item) => this.memoryDatabase.purchaseItems.set(item.id, item));
       prepared.stores.forEach((store) => this.memoryDatabase.stores.set(store.id, store));
 
-      const shouldSeed =
-        this.memoryDatabase.shoppingItems.size === 0 && !snapshot.shoppingDatabaseFound;
-      if (shouldSeed) {
-        initialShoppingListSeed.forEach((item) =>
-          this.memoryDatabase.shoppingItems.set(item.id, { ...item }),
-        );
-      }
-
-      this.memoryDatabase.metadata.set(SEED_KEY, {
-        key: SEED_KEY,
-        value: shouldSeed || snapshot.shoppingSeeded,
-      });
       this.memoryDatabase.metadata.set(MIGRATION_KEY, {
         key: MIGRATION_KEY,
         value: true,

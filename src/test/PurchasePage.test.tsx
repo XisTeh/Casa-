@@ -5,6 +5,7 @@ import { PurchaseService } from '../application/purchase-service';
 import { ShoppingListService } from '../application/shopping-list-service';
 import { StoreService } from '../application/store-service';
 import { App } from '../app/App';
+import { initialShoppingListSeed } from '../domain/shopping-list';
 import { LocalPurchaseRepository } from '../infrastructure/purchase/LocalPurchaseRepository';
 import { LocalShoppingRepository } from '../infrastructure/shopping/LocalShoppingRepository';
 import { CasaeLocalDatabase } from '../infrastructure/local-database/CasaeLocalDatabase';
@@ -16,6 +17,9 @@ function databaseName(label: string) {
 
 function createServices() {
   const database = new CasaeLocalDatabase(databaseName('unified'), { migrateLegacy: false });
+  initialShoppingListSeed.forEach((item) =>
+    database.getMemoryDatabase().shoppingItems.set(item.id, { ...item }),
+  );
   const shoppingListService = new ShoppingListService(new LocalShoppingRepository(database));
   const purchaseRepository = new LocalPurchaseRepository(database);
   const purchaseService = new PurchaseService(purchaseRepository);

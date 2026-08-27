@@ -12,7 +12,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: /olá, raabe/i })).toBeInTheDocument();
     expect(screen.getAllByText('Casa Raabe & Sidney').length).toBeGreaterThan(0);
-    expect(await screen.findByText('8 itens faltando')).toBeInTheDocument();
+    expect(await screen.findByText('0 itens faltando')).toBeInTheDocument();
   });
 
   it('nunca permite fallback local silencioso em Production sem Supabase', () => {
